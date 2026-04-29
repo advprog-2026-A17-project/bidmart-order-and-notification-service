@@ -1,4 +1,4 @@
-# Order and Notification Service
+# BidMart Order and Notification Service
 
 This service implements the extra-mile post-auction order module for BidMart. The assignment treats order and notification as optional for a 4-member team, but this repository takes Strategy B by adding a dedicated service for order creation, shipment tracking, buyer receipt confirmation, and auction-won event handling.
 

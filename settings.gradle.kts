@@ -1,1 +1,1 @@
-rootProject.name = "order-and-notification-service"
+rootProject.name = "bidmart-order-and-notification-service"

@@ -7,7 +7,7 @@ plugins {
 
 group = "id.ac.ui.cs.advprog"
 version = "0.0.1-SNAPSHOT"
-description = "order-and-notification-service"
+description = "bidmart-order-and-notification-service"
 
 java {
     toolchain {
