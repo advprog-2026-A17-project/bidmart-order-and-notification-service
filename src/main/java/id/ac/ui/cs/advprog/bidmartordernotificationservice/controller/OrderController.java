@@ -7,6 +7,7 @@ import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.UpdateOrderStatus
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.exception.ForbiddenOrderActionException;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.BidmartOrder;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.EventOrderCreationResult;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.OrderAccessPolicy;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.OrderService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -28,13 +29,16 @@ import java.net.URI;
 public class OrderController {
 
     private final OrderService orderService;
+    private final OrderAccessPolicy orderAccessPolicy;
     private final String internalServiceToken;
 
     public OrderController(
             OrderService orderService,
+            OrderAccessPolicy orderAccessPolicy,
             @Value("${app.internal-service-token:local-dev-internal-token}") String internalServiceToken
     ) {
         this.orderService = orderService;
+        this.orderAccessPolicy = orderAccessPolicy;
         this.internalServiceToken = internalServiceToken;
     }
 
@@ -43,7 +47,7 @@ public class OrderController {
             @RequestHeader("X-User-Id") String userId,
             @RequestBody CreateOrderRequest request
     ) {
-        requireActor(userId, request.sellerId(), "Only the seller can create this order");
+        orderAccessPolicy.requireSeller(userId, request.sellerId());
         BidmartOrder order = orderService.createOrder(request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
@@ -58,9 +62,7 @@ public class OrderController {
             @PathVariable String orderId
     ) {
         BidmartOrder order = orderService.getOrder(orderId);
-        if (!userId.equals(order.getSellerId()) && !userId.equals(order.getBuyerId())) {
-            throw new ForbiddenOrderActionException("Only seller or buyer can view this order");
-        }
+        orderAccessPolicy.requireParticipant(order, userId);
         return ResponseEntity.ok(OrderResponse.from(order));
     }
 
@@ -71,7 +73,7 @@ public class OrderController {
             @RequestBody UpdateOrderStatusRequest request
     ) {
         BidmartOrder order = orderService.getOrder(orderId);
-        requireActor(userId, order.getSellerId(), "Only the seller can update order shipping status");
+        orderAccessPolicy.requireSeller(order, userId);
         return ResponseEntity.ok(OrderResponse.from(orderService.updateShipping(orderId, request)));
     }
 
@@ -81,7 +83,7 @@ public class OrderController {
             @PathVariable String orderId
     ) {
         BidmartOrder order = orderService.getOrder(orderId);
-        requireActor(userId, order.getBuyerId(), "Only the buyer can confirm receipt");
+        orderAccessPolicy.requireBuyer(order, userId);
         return ResponseEntity.ok(OrderResponse.from(orderService.confirmReceipt(orderId)));
     }
 
@@ -96,11 +98,5 @@ public class OrderController {
         EventOrderCreationResult result = orderService.createOrderFromAuctionWon(request);
         HttpStatus status = result.created() ? HttpStatus.CREATED : HttpStatus.OK;
         return ResponseEntity.status(status).body(OrderResponse.from(result.order()));
-    }
-
-    private void requireActor(String actualUserId, String requiredUserId, String message) {
-        if (!requiredUserId.equals(actualUserId)) {
-            throw new ForbiddenOrderActionException(message);
-        }
     }
 }
