@@ -8,7 +8,8 @@ COPY settings.gradle.kts settings.gradle.kts
 COPY build.gradle.kts build.gradle.kts
 COPY src src
 
-RUN ./gradlew clean bootJar --no-daemon
+RUN --mount=type=cache,id=gradle-order,target=/root/.gradle \
+    ./gradlew clean bootJar --no-daemon
 
 FROM eclipse-temurin:21-jre-alpine
 
