@@ -4,10 +4,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -21,6 +27,9 @@ class OrderApiContractTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockBean
+    private SimpMessagingTemplate messagingTemplate;
 
     @Test
     void createsAndReadsOrder() throws Exception {
@@ -120,6 +129,35 @@ class OrderApiContractTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.auctionId").value("auction-3"))
                 .andExpect(jsonPath("$.status").value("CREATED"));
+    }
+
+    @Test
+    void auctionWonEventCreatesRestAndRealtimeNotification() throws Exception {
+        mockMvc.perform(post("/api/v1/orders/events/auction-won")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Internal-Service-Token", "local-dev-internal-token")
+                        .content("""
+                                {
+                                  "eventId": "event-notification-1",
+                                  "auctionId": "auction-notification-1",
+                                  "listingId": "listing-notification-1",
+                                  "sellerId": "seller-notification-1",
+                                  "buyerId": "buyer-notification-1",
+                                  "finalPrice": 200000,
+                                  "shippingAddress": "Jakarta Selatan"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/v1/notifications")
+                        .header("X-User-Id", "buyer-notification-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].type").value("ORDER_CREATED"))
+                .andExpect(jsonPath("$[0].title").value("Order created"))
+                .andExpect(jsonPath("$[0].message").value("Your winning auction has been converted into an order."));
+
+        verify(messagingTemplate, atLeastOnce())
+                .convertAndSendToUser(eq("buyer-notification-1"), eq("/queue/notifications"), any());
     }
 
     @Test
