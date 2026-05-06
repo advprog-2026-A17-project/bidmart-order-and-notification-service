@@ -13,9 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class OrderService {
 
     private final OrderRepository orderRepository;
+    private final NotificationService notificationService;
 
-    public OrderService(OrderRepository orderRepository) {
+    public OrderService(OrderRepository orderRepository, NotificationService notificationService) {
         this.orderRepository = orderRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -37,15 +39,19 @@ public class OrderService {
         return orderRepository.findBySourceEventId(request.eventId())
                 .or(() -> orderRepository.findByAuctionId(request.auctionId()))
                 .map(order -> new EventOrderCreationResult(order, false))
-                .orElseGet(() -> new EventOrderCreationResult(orderRepository.save(BidmartOrder.create(
-                        request.auctionId(),
-                        request.listingId(),
-                        request.sellerId(),
-                        request.buyerId(),
-                        request.finalPrice(),
-                        request.shippingAddress(),
-                        request.eventId()
-                )), true));
+                .orElseGet(() -> {
+                    BidmartOrder order = orderRepository.save(BidmartOrder.create(
+                            request.auctionId(),
+                            request.listingId(),
+                            request.sellerId(),
+                            request.buyerId(),
+                            request.finalPrice(),
+                            request.shippingAddress(),
+                            request.eventId()
+                    ));
+                    notificationService.notifyOrderCreated(order);
+                    return new EventOrderCreationResult(order, true);
+                });
     }
 
     @Transactional(readOnly = true)
