@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.AuctionWonEventRequest;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.AuctionRealtimeService;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.NotificationService;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.OrderService;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -18,22 +19,26 @@ public class AuctionOrderEventConsumer {
 
     private static final String BID_PLACED_V1 = "auction.bid-placed.v1";
     private static final String OUTBID_V1 = "auction.outbid.v1";
+    private static final String AUCTION_CREATED_V1 = "auction.created.v1";
     private static final String AUCTION_ENDED_V1 = "auction.ended.v1";
     private static final String DEFAULT_SHIPPING_ADDRESS = "Pending buyer shipping address";
 
     private final ObjectMapper objectMapper;
     private final OrderService orderService;
     private final NotificationService notificationService;
+    private final AuctionRealtimeService auctionRealtimeService;
     private final Set<String> processedEventIds = ConcurrentHashMap.newKeySet();
 
     public AuctionOrderEventConsumer(
             ObjectMapper objectMapper,
             OrderService orderService,
-            NotificationService notificationService
+            NotificationService notificationService,
+            AuctionRealtimeService auctionRealtimeService
     ) {
         this.objectMapper = objectMapper;
         this.orderService = orderService;
         this.notificationService = notificationService;
+        this.auctionRealtimeService = auctionRealtimeService;
     }
 
     @RabbitListener(queues = "${bidmart.rabbitmq.order.auction-events-queue:order-notification.auction-events}")
@@ -46,6 +51,10 @@ public class AuctionOrderEventConsumer {
 
         String eventType = normalizeEventType(envelope);
         JsonNode payload = envelope.path("payload");
+        if (AUCTION_CREATED_V1.equals(eventType)) {
+            auctionRealtimeService.publishAuctionEvent(eventType, payload);
+            return;
+        }
         if (BID_PLACED_V1.equals(eventType)) {
             handleBidPlaced(eventId, payload);
             return;
@@ -62,6 +71,7 @@ public class AuctionOrderEventConsumer {
     private void handleBidPlaced(String eventId, JsonNode payload) {
         String bidderId = payload.path("bidderId").asText("");
         String auctionId = payload.path("auctionId").asText("");
+        auctionRealtimeService.publishAuctionEvent(BID_PLACED_V1, payload);
         if (bidderId.isBlank() || auctionId.isBlank()) {
             return;
         }
@@ -71,6 +81,7 @@ public class AuctionOrderEventConsumer {
     private void handleOutbid(String eventId, JsonNode payload) {
         String previousBidderId = payload.path("previousBidderId").asText("");
         String auctionId = payload.path("auctionId").asText("");
+        auctionRealtimeService.publishAuctionEvent(OUTBID_V1, payload);
         if (previousBidderId.isBlank() || auctionId.isBlank()) {
             return;
         }
@@ -82,6 +93,7 @@ public class AuctionOrderEventConsumer {
         String sellerId = payload.path("sellerId").asText("");
         String winnerId = payload.path("winnerId").asText("");
         boolean sold = !winnerId.isBlank();
+        auctionRealtimeService.publishAuctionEvent(AUCTION_ENDED_V1, payload);
         if (!sellerId.isBlank()) {
             notificationService.notifyAuctionEnded(sellerId, auctionId, sold, eventId);
         }
