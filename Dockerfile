@@ -1,15 +1,13 @@
-FROM eclipse-temurin:21-jdk-alpine AS builder
+FROM gradle:8.14.4-jdk21-alpine AS builder
 
 WORKDIR /workspace
 
-COPY gradlew gradlew
-COPY gradle gradle
 COPY settings.gradle.kts settings.gradle.kts
 COPY build.gradle.kts build.gradle.kts
 COPY src src
 
-RUN --mount=type=cache,id=gradle-order,target=/root/.gradle \
-    ./gradlew clean bootJar --no-daemon
+RUN --mount=type=cache,id=gradle-order,target=/home/gradle/.gradle \
+    gradle clean bootJar --no-daemon
 
 FROM eclipse-temurin:21-jre-alpine
 
