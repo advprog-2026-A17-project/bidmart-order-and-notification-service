@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.bidmartordernotificationservice.service;
 
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.NotificationResponse;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.exception.NotificationNotFoundException;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.BidmartNotification;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.BidmartOrder;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.repository.NotificationRepository;
@@ -36,6 +37,25 @@ public class NotificationService {
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .map(NotificationResponse::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public NotificationResponse getForUser(String userId, String notificationId) {
+        BidmartNotification notification = notificationRepository.findByIdAndUserId(notificationId, userId)
+                .orElseThrow(() -> new NotificationNotFoundException(notificationId));
+        return NotificationResponse.from(notification);
+    }
+
+    @Transactional
+    public NotificationResponse updateReadStatus(String userId, String notificationId, boolean read) {
+        BidmartNotification notification = notificationRepository.findByIdAndUserId(notificationId, userId)
+                .orElseThrow(() -> new NotificationNotFoundException(notificationId));
+        if (read) {
+            notification.markAsRead();
+        } else {
+            notification.markAsUnread();
+        }
+        return NotificationResponse.from(notificationRepository.save(notification));
     }
 
     @Transactional

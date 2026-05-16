@@ -1,5 +1,7 @@
 package id.ac.ui.cs.advprog.bidmartordernotificationservice;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -15,6 +17,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -27,6 +30,9 @@ class OrderApiContractTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @MockBean
     private SimpMessagingTemplate messagingTemplate;
@@ -158,6 +164,71 @@ class OrderApiContractTest {
 
         verify(messagingTemplate, atLeastOnce())
                 .convertAndSendToUser(eq("buyer-notification-1"), eq("/queue/notifications"), any());
+    }
+
+    @Test
+    void notificationSupportsDetailAndReadUnreadStatus() throws Exception {
+        mockMvc.perform(post("/api/v1/orders/events/auction-won")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Internal-Service-Token", "local-dev-internal-token")
+                        .content("""
+                                {
+                                  "eventId": "event-notification-2",
+                                  "auctionId": "auction-notification-2",
+                                  "listingId": "listing-notification-2",
+                                  "sellerId": "seller-notification-2",
+                                  "buyerId": "buyer-notification-2",
+                                  "finalPrice": 300000,
+                                  "shippingAddress": "Bandung"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        String listPayload = mockMvc.perform(get("/api/v1/notifications")
+                        .header("X-User-Id", "buyer-notification-2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id", notNullValue()))
+                .andExpect(jsonPath("$[0].status").value("UNREAD"))
+                .andExpect(jsonPath("$[0].read").value(false))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        JsonNode listNode = objectMapper.readTree(listPayload);
+        String notificationId = listNode.get(0).get("id").asText();
+
+        mockMvc.perform(get("/api/v1/notifications/" + notificationId)
+                        .header("X-User-Id", "buyer-notification-2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(notificationId))
+                .andExpect(jsonPath("$.status").value("UNREAD"))
+                .andExpect(jsonPath("$.sourceEventId", notNullValue()));
+
+        mockMvc.perform(patch("/api/v1/notifications/" + notificationId + "/read-status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-User-Id", "buyer-notification-2")
+                        .content("""
+                                {
+                                  "read": true
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(notificationId))
+                .andExpect(jsonPath("$.status").value("READ"))
+                .andExpect(jsonPath("$.read").value(true))
+                .andExpect(jsonPath("$.readAt", notNullValue()));
+
+        mockMvc.perform(patch("/api/v1/notifications/" + notificationId + "/read-status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-User-Id", "buyer-notification-2")
+                        .content("""
+                                {
+                                  "read": false
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(notificationId))
+                .andExpect(jsonPath("$.status").value("UNREAD"))
+                .andExpect(jsonPath("$.read").value(false));
     }
 
     @Test
