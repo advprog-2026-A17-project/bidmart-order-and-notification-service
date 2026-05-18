@@ -70,8 +70,17 @@ public class OrderService {
     @Transactional
     public BidmartOrder updateShipping(String orderId, UpdateOrderStatusRequest request) {
         BidmartOrder order = getOrder(orderId);
-        order.updateShipping(request.status(), request.trackingNumber(), request.carrier());
+        String trackingNumber = request.trackingNumber();
+        if (request.status() == id.ac.ui.cs.advprog.bidmartordernotificationservice.model.OrderStatus.SHIPPED
+                && (trackingNumber == null || trackingNumber.isBlank())) {
+            trackingNumber = generateTrackingNumber();
+        }
+        order.updateShipping(request.status(), trackingNumber, request.carrier());
         return order;
+    }
+
+    private String generateTrackingNumber() {
+        return "TRK-" + java.util.UUID.randomUUID().toString().replace("-", "");
     }
 
     @Transactional
