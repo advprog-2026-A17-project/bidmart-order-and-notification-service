@@ -99,6 +99,26 @@ class OrderApiContractTest {
     }
 
     @Test
+    void listsOrdersForCurrentBuyerOrSellerOnly() throws Exception {
+        createOrder("auction-list-1", "seller-list-1", "buyer-list-1");
+        createOrder("auction-list-2", "seller-list-2", "buyer-list-1");
+        createOrder("auction-list-3", "seller-list-3", "buyer-list-3");
+
+        mockMvc.perform(get("/api/v1/orders")
+                        .header("X-User-Id", "buyer-list-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].buyerId").value("buyer-list-1"))
+                .andExpect(jsonPath("$[1].buyerId").value("buyer-list-1"));
+
+        mockMvc.perform(get("/api/v1/orders")
+                        .header("X-User-Id", "seller-list-3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].sellerId").value("seller-list-3"));
+    }
+
+    @Test
     void createsOrderAutomaticallyFromAuctionWonEvent() throws Exception {
         mockMvc.perform(post("/api/v1/orders/events/auction-won")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -40,6 +41,16 @@ public class OrderController {
         this.orderService = orderService;
         this.orderAccessPolicy = orderAccessPolicy;
         this.internalServiceToken = internalServiceToken;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<OrderResponse>> listOrders(
+            @RequestHeader("X-User-Id") String userId
+    ) {
+        List<OrderResponse> orders = orderService.listOrdersForUser(userId).stream()
+                .map(OrderResponse::from)
+                .toList();
+        return ResponseEntity.ok(orders);
     }
 
     @PostMapping

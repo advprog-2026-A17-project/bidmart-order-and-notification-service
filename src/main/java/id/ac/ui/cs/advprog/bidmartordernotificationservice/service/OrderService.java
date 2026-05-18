@@ -9,6 +9,8 @@ import id.ac.ui.cs.advprog.bidmartordernotificationservice.repository.OrderRepos
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class OrderService {
 
@@ -58,6 +60,11 @@ public class OrderService {
     public BidmartOrder getOrder(String orderId) {
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<BidmartOrder> listOrdersForUser(String userId) {
+        return orderRepository.findByBuyerIdOrSellerIdOrderByCreatedAtDesc(userId, userId);
     }
 
     @Transactional
