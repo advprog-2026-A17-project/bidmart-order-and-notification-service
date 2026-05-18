@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.bidmartordernotificationservice.event;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.client.AuthClient;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.AuctionWonEventRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.AuctionRealtimeService;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.NotificationService;
@@ -27,18 +28,21 @@ public class AuctionOrderEventConsumer {
     private final OrderService orderService;
     private final NotificationService notificationService;
     private final AuctionRealtimeService auctionRealtimeService;
+    private final AuthClient authClient;
     private final Set<String> processedEventIds = ConcurrentHashMap.newKeySet();
 
     public AuctionOrderEventConsumer(
             ObjectMapper objectMapper,
             OrderService orderService,
             NotificationService notificationService,
-            AuctionRealtimeService auctionRealtimeService
+            AuctionRealtimeService auctionRealtimeService,
+            AuthClient authClient
     ) {
         this.objectMapper = objectMapper;
         this.orderService = orderService;
         this.notificationService = notificationService;
         this.auctionRealtimeService = auctionRealtimeService;
+        this.authClient = authClient;
     }
 
     @RabbitListener(queues = "${bidmart.rabbitmq.order.auction-events-queue:order-notification.auction-events}")
@@ -102,6 +106,7 @@ public class AuctionOrderEventConsumer {
         }
 
         notificationService.notifyAuctionWon(winnerId, auctionId, eventId);
+        String shippingAddress = resolveShippingAddress(payload, winnerId);
         orderService.createOrderFromAuctionWon(new AuctionWonEventRequest(
                 eventId,
                 auctionId,
@@ -109,8 +114,24 @@ public class AuctionOrderEventConsumer {
                 sellerId,
                 winnerId,
                 decimal(payload.path("finalPrice")),
-                payload.path("shippingAddress").asText(DEFAULT_SHIPPING_ADDRESS)
+                shippingAddress
         ));
+    }
+
+    private String resolveShippingAddress(JsonNode payload, String winnerId) {
+        // Try to get shipping address from event payload first (for manual order creation)
+        String fromPayload = payload.path("shippingAddress").asText("");
+        if (!fromPayload.isBlank()) {
+            return fromPayload;
+        }
+        // Fetch buyer's shipping address from auth service profile
+        if (winnerId != null && !winnerId.isBlank()) {
+            String fromProfile = authClient.fetchShippingAddress(winnerId);
+            if (fromProfile != null && !fromProfile.isBlank()) {
+                return fromProfile;
+            }
+        }
+        return DEFAULT_SHIPPING_ADDRESS;
     }
 
     private String normalizeEventType(JsonNode envelope) {
