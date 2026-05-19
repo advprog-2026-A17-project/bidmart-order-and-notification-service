@@ -80,6 +80,19 @@ class OrderApiContractTest {
                         .header("X-User-Id", "seller-2")
                         .content("""
                                 {
+                                  "status": "PACKED",
+                                  "carrier": "JNE"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PACKED"))
+                .andExpect(jsonPath("$.shippingStatus").value("PACKED"));
+
+        mockMvc.perform(put(location + "/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-User-Id", "seller-2")
+                        .content("""
+                                {
                                   "status": "SHIPPED",
                                   "trackingNumber": "JNE-12345",
                                   "carrier": "JNE"

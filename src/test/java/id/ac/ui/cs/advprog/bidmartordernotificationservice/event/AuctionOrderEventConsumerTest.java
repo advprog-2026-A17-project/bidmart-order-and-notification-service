@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.bidmartordernotificationservice.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.client.AuthClient;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.AuctionWonEventRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.AuctionRealtimeService;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.NotificationService;
@@ -17,6 +18,7 @@ import java.math.BigDecimal;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AuctionOrderEventConsumerTest {
@@ -30,11 +32,14 @@ class AuctionOrderEventConsumerTest {
     @Mock
     private AuctionRealtimeService auctionRealtimeService;
 
+    @Mock
+    private AuthClient authClient;
+
     private AuctionOrderEventConsumer consumer;
 
     @BeforeEach
     void setUp() {
-        consumer = new AuctionOrderEventConsumer(new ObjectMapper(), orderService, notificationService, auctionRealtimeService);
+        consumer = new AuctionOrderEventConsumer(new ObjectMapper(), orderService, notificationService, auctionRealtimeService, authClient);
     }
 
     @Test
@@ -53,7 +58,7 @@ class AuctionOrderEventConsumerTest {
                 }
                 """);
 
-        verify(notificationService).notifyBidPlaced("buyer-1", "auction-1", new BigDecimal("12500"), "evt-bid-1");
+        verify(notificationService).notifyBidPlaced("buyer-1", "auction-1", new BigDecimal("125.00"), "evt-bid-1");
         verify(auctionRealtimeService).publishAuctionEvent(eq("auction.bid-placed.v1"), argThat(payload -> payload.path("auctionId").asText().equals("auction-1")));
     }
 
@@ -92,11 +97,12 @@ class AuctionOrderEventConsumerTest {
                 }
                 """);
 
-        verify(notificationService).notifyOutbid("buyer-1", "auction-1", new BigDecimal("14000"), "evt-outbid-1");
+        verify(notificationService).notifyOutbid("buyer-1", "auction-1", new BigDecimal("140.00"), "evt-outbid-1");
     }
 
     @Test
     void auctionEndedWithWinnerCreatesOrderAndNotifications() throws Exception {
+        when(authClient.fetchShippingAddress("buyer-1")).thenReturn("Jl. Melati No. 10, Jakarta");
         consumer.consume("""
                 {
                   "eventId": "evt-ended-1",
@@ -108,8 +114,7 @@ class AuctionOrderEventConsumerTest {
                     "listingId": "listing-1",
                     "sellerId": "seller-1",
                     "winnerId": "buyer-1",
-                    "finalPrice": 15000,
-                    "shippingAddress": "Pending buyer shipping address"
+                    "finalPrice": 15000
                   }
                 }
                 """);
@@ -125,6 +130,7 @@ class AuctionOrderEventConsumerTest {
                 && request.listingId().equals("listing-1")
                 && request.sellerId().equals("seller-1")
                 && request.buyerId().equals("buyer-1")
-                && request.finalPrice().compareTo(new BigDecimal("15000")) == 0;
+                && request.finalPrice().compareTo(new BigDecimal("150.00")) == 0
+                && request.shippingAddress().equals("Jl. Melati No. 10, Jakarta");
     }
 }

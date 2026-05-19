@@ -113,7 +113,7 @@ public class AuctionOrderEventConsumer {
                 payload.path("listingId").asText(""),
                 sellerId,
                 winnerId,
-                decimal(payload.path("finalPrice")),
+                decimalFromCents(payload.path("finalPrice")),
                 shippingAddress
         ));
     }
@@ -121,7 +121,7 @@ public class AuctionOrderEventConsumer {
     private String resolveShippingAddress(JsonNode payload, String winnerId) {
         // Try to get shipping address from event payload first (for manual order creation)
         String fromPayload = payload.path("shippingAddress").asText("");
-        if (!fromPayload.isBlank()) {
+        if (!fromPayload.isBlank() && !DEFAULT_SHIPPING_ADDRESS.equals(fromPayload)) {
             return fromPayload;
         }
         // Fetch buyer's shipping address from auth service profile
@@ -147,13 +147,17 @@ public class AuctionOrderEventConsumer {
         JsonNode amount = payload.hasNonNull("amountCents")
                 ? payload.path("amountCents")
                 : payload.path("currentPrice");
-        return decimal(amount);
+        return decimalFromCents(amount);
     }
 
-    private BigDecimal decimal(JsonNode node) {
+    private BigDecimal decimalFromCents(JsonNode node) {
         if (node.isNumber()) {
-            return node.decimalValue();
+            return BigDecimal.valueOf(node.asLong()).movePointLeft(2);
         }
-        return new BigDecimal(node.asText("0"));
+        String raw = node.asText("0").trim();
+        if (raw.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        return new BigDecimal(raw).movePointLeft(2);
     }
 }

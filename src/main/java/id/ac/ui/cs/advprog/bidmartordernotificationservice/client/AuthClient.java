@@ -19,7 +19,7 @@ public class AuthClient {
 
     public AuthClient(
             RestTemplate restTemplate,
-            @Value("${bidmart.auth.base-url:http://localhost:8081}") String baseUrl
+            @Value("${bidmart.auth.base-url:http://localhost:8080}") String baseUrl
     ) {
         this.restTemplate = restTemplate;
         this.baseUrl = baseUrl;
