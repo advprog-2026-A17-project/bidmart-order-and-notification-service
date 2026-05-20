@@ -6,8 +6,10 @@ import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.OrderStatus;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.repository.OrderRepository;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -42,7 +44,7 @@ class OrderPayoutSchedulerTest {
         WalletClient walletClient = mock(WalletClient.class);
         OrderPayoutScheduler scheduler = new OrderPayoutScheduler(orderRepository, walletClient, 5);
 
-        BidmartOrder order = confirmedOrder("seller-ok", new BigDecimal("12500"));
+        BidmartOrder order = confirmedOrder("seller-ok", new BigDecimal("125.00"));
         when(orderRepository.findByStatusAndPayoutReleasedAtIsNullAndConfirmedAtBefore(eq(OrderStatus.CONFIRMED), any(Instant.class)))
                 .thenReturn(List.of(order));
 
@@ -58,8 +60,8 @@ class OrderPayoutSchedulerTest {
         WalletClient walletClient = mock(WalletClient.class);
         OrderPayoutScheduler scheduler = new OrderPayoutScheduler(orderRepository, walletClient, 5);
 
-        BidmartOrder failing = confirmedOrder("seller-fail", new BigDecimal("15000"));
-        BidmartOrder success = confirmedOrder("seller-ok", new BigDecimal("20000"));
+        BidmartOrder failing = confirmedOrder("seller-fail", new BigDecimal("150.00"));
+        BidmartOrder success = confirmedOrder("seller-ok", new BigDecimal("200.00"));
         when(orderRepository.findByStatusAndPayoutReleasedAtIsNullAndConfirmedAtBefore(eq(OrderStatus.CONFIRMED), any(Instant.class)))
                 .thenReturn(List.of(failing, success));
 
@@ -87,6 +89,26 @@ class OrderPayoutSchedulerTest {
         scheduler.releaseConfirmedOrderPayouts();
 
         verify(walletClient).payoutSeller(eq("seller-null"), eq(0L), eq(order.getId()));
+    }
+
+    @Test
+    void releaseConfirmedOrderPayoutsMarksOrderReleasedOnSuccess() throws Exception {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        WalletClient walletClient = mock(WalletClient.class);
+        OrderPayoutScheduler scheduler = new OrderPayoutScheduler(orderRepository, walletClient, 5);
+
+        BidmartOrder order = confirmedOrder("seller-done", new BigDecimal("99.00"));
+        Field confirmedAt = BidmartOrder.class.getDeclaredField("confirmedAt");
+        confirmedAt.setAccessible(true);
+        confirmedAt.set(order, Instant.now().minus(10, ChronoUnit.MINUTES));
+
+        when(orderRepository.findByStatusAndPayoutReleasedAtIsNullAndConfirmedAtBefore(eq(OrderStatus.CONFIRMED), any(Instant.class)))
+                .thenReturn(List.of(order));
+
+        scheduler.releaseConfirmedOrderPayouts();
+
+        org.junit.jupiter.api.Assertions.assertNotNull(order.getPayoutReleasedAt());
+        verify(walletClient).payoutSeller(eq("seller-done"), eq(9900L), eq(order.getId()));
     }
 }
 

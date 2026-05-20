@@ -62,6 +62,14 @@ class BidmartOrderTest {
     }
 
     @Test
+    void updateShippingShouldRejectPackedWhenAlreadyPacked() {
+        BidmartOrder order = newOrder();
+        order.updateShipping(OrderStatus.PACKED, "TRK-1", "JNE");
+
+        assertThrows(IllegalArgumentException.class, () -> order.updateShipping(OrderStatus.PACKED, "TRK-2", "JNE"));
+    }
+
+    @Test
     void confirmReceiptShouldRequireShippedStatus() {
         BidmartOrder order = newOrder();
         assertThrows(IllegalArgumentException.class, order::confirmReceipt);

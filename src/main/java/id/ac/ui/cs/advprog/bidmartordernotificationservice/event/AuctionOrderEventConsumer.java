@@ -95,8 +95,10 @@ public class AuctionOrderEventConsumer {
     private void handleAuctionEnded(String eventId, JsonNode payload) {
         String auctionId = payload.path("auctionId").asText("");
         String sellerId = payload.path("sellerId").asText("");
+        String status = payload.path("status").asText("");
         String winnerId = payload.path("winnerId").asText("");
-        boolean sold = !winnerId.isBlank();
+        boolean sold = "WON".equalsIgnoreCase(status)
+                || (status.isBlank() && !winnerId.isBlank());
         auctionRealtimeService.publishAuctionEvent(AUCTION_ENDED_V1, payload);
         if (!sellerId.isBlank()) {
             notificationService.notifyAuctionEnded(sellerId, auctionId, sold, eventId);

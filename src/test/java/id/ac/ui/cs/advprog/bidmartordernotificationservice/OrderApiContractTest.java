@@ -135,7 +135,7 @@ class OrderApiContractTest {
     void createsOrderAutomaticallyFromAuctionWonEvent() throws Exception {
         mockMvc.perform(post("/api/v1/orders/events/auction-won")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .header("X-Internal-Service-Token", "local-dev-internal-token")
+                        .header("X-Internal-Service-Token", "bidmart-local-internal-token")
                         .content("""
                                 {
                                   "eventId": "event-1",
@@ -153,7 +153,7 @@ class OrderApiContractTest {
 
         mockMvc.perform(post("/api/v1/orders/events/auction-won")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .header("X-Internal-Service-Token", "local-dev-internal-token")
+                        .header("X-Internal-Service-Token", "bidmart-local-internal-token")
                         .content("""
                                 {
                                   "eventId": "event-1",
@@ -174,7 +174,7 @@ class OrderApiContractTest {
     void auctionWonEventCreatesRestAndRealtimeNotification() throws Exception {
         mockMvc.perform(post("/api/v1/orders/events/auction-won")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .header("X-Internal-Service-Token", "local-dev-internal-token")
+                        .header("X-Internal-Service-Token", "bidmart-local-internal-token")
                         .content("""
                                 {
                                   "eventId": "event-notification-1",
@@ -203,7 +203,7 @@ class OrderApiContractTest {
     void notificationSupportsDetailAndReadUnreadStatus() throws Exception {
         mockMvc.perform(post("/api/v1/orders/events/auction-won")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .header("X-Internal-Service-Token", "local-dev-internal-token")
+                        .header("X-Internal-Service-Token", "bidmart-local-internal-token")
                         .content("""
                                 {
                                   "eventId": "event-notification-2",
@@ -262,6 +262,25 @@ class OrderApiContractTest {
                 .andExpect(jsonPath("$.id").value(notificationId))
                 .andExpect(jsonPath("$.status").value("UNREAD"))
                 .andExpect(jsonPath("$.read").value(false));
+    }
+
+    @Test
+    void rejectsInvalidInternalTokenForAuctionWonEvent() throws Exception {
+        mockMvc.perform(post("/api/v1/orders/events/auction-won")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Internal-Service-Token", "wrong-token")
+                        .content("""
+                                {
+                                  "eventId": "event-invalid-token",
+                                  "auctionId": "auction-invalid",
+                                  "listingId": "listing-invalid",
+                                  "sellerId": "seller-invalid",
+                                  "buyerId": "buyer-invalid",
+                                  "finalPrice": 100000,
+                                  "shippingAddress": "Depok"
+                                }
+                                """))
+                .andExpect(status().isForbidden());
     }
 
     @Test

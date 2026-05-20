@@ -57,6 +57,6 @@ public class OrderPayoutScheduler {
         if (amount == null) {
             return 0L;
         }
-        return amount.setScale(0).longValueExact();
+        return amount.movePointRight(2).setScale(0, java.math.RoundingMode.UNNECESSARY).longValueExact();
     }
 }
