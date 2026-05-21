@@ -249,7 +249,7 @@ class OrderServiceTest {
         );
 
         assertEquals(OrderStatus.REFUNDED, resolved.getStatus());
-        verify(walletClient).refundBuyer("buyer-2", 20000L);
+        verify(walletClient).refundBuyer("buyer-2", 200L);
         verify(notificationService).notifyDisputeResolved(resolved);
     }
 }

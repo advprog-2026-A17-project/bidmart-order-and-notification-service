@@ -50,7 +50,7 @@ class OrderPayoutSchedulerTest {
 
         scheduler.releaseConfirmedOrderPayouts();
 
-        verify(walletClient).payoutSeller(eq("seller-ok"), eq(12500L), eq(order.getId()));
+        verify(walletClient).payoutSeller(eq("seller-ok"), eq(125L), eq(order.getId()));
         verify(orderRepository).findByStatusAndPayoutReleasedAtIsNullAndConfirmedAtBefore(eq(OrderStatus.CONFIRMED), any(Instant.class));
     }
 
@@ -66,12 +66,12 @@ class OrderPayoutSchedulerTest {
                 .thenReturn(List.of(failing, success));
 
         doThrow(new org.springframework.web.client.RestClientException("wallet down")).when(walletClient)
-                .payoutSeller(eq("seller-fail"), eq(15000L), eq(failing.getId()));
+                .payoutSeller(eq("seller-fail"), eq(150L), eq(failing.getId()));
 
         scheduler.releaseConfirmedOrderPayouts();
 
-        verify(walletClient).payoutSeller(eq("seller-fail"), eq(15000L), eq(failing.getId()));
-        verify(walletClient).payoutSeller(eq("seller-ok"), eq(20000L), eq(success.getId()));
+        verify(walletClient).payoutSeller(eq("seller-fail"), eq(150L), eq(failing.getId()));
+        verify(walletClient).payoutSeller(eq("seller-ok"), eq(200L), eq(success.getId()));
         // failing order should not throw out and stop loop
         verify(walletClient, never()).payoutSeller(eq("seller-never"), any(Long.class), any(String.class));
     }
@@ -108,7 +108,7 @@ class OrderPayoutSchedulerTest {
         scheduler.releaseConfirmedOrderPayouts();
 
         org.junit.jupiter.api.Assertions.assertNotNull(order.getPayoutReleasedAt());
-        verify(walletClient).payoutSeller(eq("seller-done"), eq(9900L), eq(order.getId()));
+        verify(walletClient).payoutSeller(eq("seller-done"), eq(99L), eq(order.getId()));
     }
 }
 

@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.List;
 
 @Service
@@ -119,7 +118,7 @@ public class OrderService {
         order.resolveDispute(request.winner(), resolvedBy);
         if (request.winner() == DisputeWinner.BUYER) {
             try {
-                walletClient.refundBuyer(order.getBuyerId(), toCents(order.getFinalPrice()));
+                walletClient.refundBuyer(order.getBuyerId(), toRupiah(order.getFinalPrice()));
             } catch (RestClientException ex) {
                 throw new IllegalStateException("Failed to refund buyer wallet balance", ex);
             }
@@ -129,10 +128,10 @@ public class OrderService {
         return saved;
     }
 
-    private long toCents(BigDecimal amount) {
+    private long toRupiah(BigDecimal amount) {
         if (amount == null) {
             return 0L;
         }
-        return amount.movePointRight(2).setScale(0, RoundingMode.UNNECESSARY).longValueExact();
+        return amount.setScale(0, java.math.RoundingMode.UNNECESSARY).longValueExact();
     }
 }

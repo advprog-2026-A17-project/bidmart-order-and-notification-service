@@ -33,15 +33,15 @@ class WalletClientTest {
     }
 
     @Test
-    void payoutSellerPostsCentsAndOrderReference() {
+    void payoutSellerPostsAmountAndOrderReference() {
         server.expect(requestTo("http://wallet.test/api/v1/wallet/payout"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("x-internal-service-token", "wallet-internal-token"))
                 .andExpect(content().json("""
-                        {"sellerId":"seller-1","amountCents":12500,"orderId":"order-1"}
+                        {"sellerId":"seller-1","amount":125,"orderId":"order-1"}
                         """))
                 .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
 
-        walletClient.payoutSeller("seller-1", 12500L, "order-1");
+        walletClient.payoutSeller("seller-1", 125L, "order-1");
     }
 }
