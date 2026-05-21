@@ -33,6 +33,13 @@ public class OrderRabbitConfig {
     }
 
     @Bean
+    Binding orderAuctionCreatedBinding(Queue orderAuctionEventsQueue, TopicExchange bidmartEventsExchange) {
+        return BindingBuilder.bind(orderAuctionEventsQueue)
+                .to(bidmartEventsExchange)
+                .with("auction.created.v1");
+    }
+
+    @Bean
     Binding orderBidPlacedBinding(Queue orderAuctionEventsQueue, TopicExchange bidmartEventsExchange) {
         return BindingBuilder.bind(orderAuctionEventsQueue)
                 .to(bidmartEventsExchange)
