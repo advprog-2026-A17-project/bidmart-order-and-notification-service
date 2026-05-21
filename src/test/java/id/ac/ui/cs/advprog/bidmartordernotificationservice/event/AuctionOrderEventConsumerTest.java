@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.bidmartordernotificationservice.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.client.AuthClient;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.metrics.BidmartOrderMetrics;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.AuctionWonEventRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.AuctionRealtimeService;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.NotificationService;
@@ -36,11 +37,21 @@ class AuctionOrderEventConsumerTest {
     @Mock
     private AuthClient authClient;
 
+    @Mock
+    private BidmartOrderMetrics orderMetrics;
+
     private AuctionOrderEventConsumer consumer;
 
     @BeforeEach
     void setUp() {
-        consumer = new AuctionOrderEventConsumer(new ObjectMapper(), orderService, notificationService, auctionRealtimeService, authClient);
+        consumer = new AuctionOrderEventConsumer(
+                new ObjectMapper(),
+                orderService,
+                notificationService,
+                auctionRealtimeService,
+                authClient,
+                orderMetrics
+        );
     }
 
     @Test

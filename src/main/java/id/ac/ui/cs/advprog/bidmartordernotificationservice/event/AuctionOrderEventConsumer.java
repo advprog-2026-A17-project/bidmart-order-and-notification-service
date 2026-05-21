@@ -7,6 +7,7 @@ import id.ac.ui.cs.advprog.bidmartordernotificationservice.client.AuthClient;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.AuctionWonEventRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.AuctionRealtimeService;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.NotificationService;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.metrics.BidmartOrderMetrics;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.OrderService;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
@@ -29,6 +30,7 @@ public class AuctionOrderEventConsumer {
     private final NotificationService notificationService;
     private final AuctionRealtimeService auctionRealtimeService;
     private final AuthClient authClient;
+    private final BidmartOrderMetrics orderMetrics;
     private final Set<String> processedEventIds = ConcurrentHashMap.newKeySet();
 
     public AuctionOrderEventConsumer(
@@ -36,17 +38,20 @@ public class AuctionOrderEventConsumer {
             OrderService orderService,
             NotificationService notificationService,
             AuctionRealtimeService auctionRealtimeService,
-            AuthClient authClient
+            AuthClient authClient,
+            BidmartOrderMetrics orderMetrics
     ) {
         this.objectMapper = objectMapper;
         this.orderService = orderService;
         this.notificationService = notificationService;
         this.auctionRealtimeService = auctionRealtimeService;
         this.authClient = authClient;
+        this.orderMetrics = orderMetrics;
     }
 
     @RabbitListener(queues = "${bidmart.rabbitmq.order.auction-events-queue:order-notification.auction-events}")
     public void consume(String message) throws JsonProcessingException {
+        orderMetrics.recordRabbitConsumed();
         JsonNode envelope = objectMapper.readTree(message);
         String eventId = envelope.path("eventId").asText("");
         if (!eventId.isBlank() && !processedEventIds.add(eventId)) {
@@ -108,6 +113,7 @@ public class AuctionOrderEventConsumer {
         }
 
         notificationService.notifyAuctionWon(winnerId, auctionId, eventId);
+        orderMetrics.recordNotificationSent();
         String shippingAddress = resolveShippingAddress(payload, winnerId);
         orderService.createOrderFromAuctionWon(new AuctionWonEventRequest(
                 eventId,
@@ -118,6 +124,7 @@ public class AuctionOrderEventConsumer {
                 decimalFromCents(payload.path("finalPrice")),
                 shippingAddress
         ));
+        orderMetrics.recordOrderCreated();
     }
 
     private String resolveShippingAddress(JsonNode payload, String winnerId) {
