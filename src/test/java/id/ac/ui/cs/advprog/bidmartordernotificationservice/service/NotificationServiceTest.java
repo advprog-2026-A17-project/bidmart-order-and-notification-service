@@ -4,13 +4,17 @@ import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.NotificationRespo
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.exception.NotificationNotFoundException;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.BidmartNotification;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.BidmartOrder;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.NotificationPreference;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.repository.NotificationRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.math.BigDecimal;
@@ -26,6 +30,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class NotificationServiceTest {
 
     @Mock
@@ -34,8 +39,20 @@ class NotificationServiceTest {
     @Mock
     private SimpMessagingTemplate messagingTemplate;
 
+    @Mock
+    private NotificationPreferenceService notificationPreferenceService;
+
+    @Mock
+    private ExternalNotificationDispatcher externalNotificationDispatcher;
+
     @InjectMocks
     private NotificationService notificationService;
+
+    @BeforeEach
+    void stubPreferences() {
+        when(notificationPreferenceService.findOrCreate(any()))
+                .thenAnswer(invocation -> NotificationPreference.defaults(invocation.getArgument(0)));
+    }
 
     @Test
     void notifyBidPlacedPersistsAndPublishesRealtimeMessage() {

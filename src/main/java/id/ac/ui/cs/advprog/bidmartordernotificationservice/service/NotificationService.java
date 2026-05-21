@@ -26,13 +26,19 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final NotificationPreferenceService notificationPreferenceService;
+    private final ExternalNotificationDispatcher externalNotificationDispatcher;
 
     public NotificationService(
             NotificationRepository notificationRepository,
-            SimpMessagingTemplate messagingTemplate
+            SimpMessagingTemplate messagingTemplate,
+            NotificationPreferenceService notificationPreferenceService,
+            ExternalNotificationDispatcher externalNotificationDispatcher
     ) {
         this.notificationRepository = notificationRepository;
         this.messagingTemplate = messagingTemplate;
+        this.notificationPreferenceService = notificationPreferenceService;
+        this.externalNotificationDispatcher = externalNotificationDispatcher;
     }
 
     @Transactional(readOnly = true)
@@ -198,7 +204,16 @@ public class NotificationService {
                         sourceEventId
                 )));
         NotificationResponse response = NotificationResponse.from(notification);
-        messagingTemplate.convertAndSendToUser(userId, "/queue/notifications", response);
+        var preferences = notificationPreferenceService.findOrCreate(userId);
+        if (preferences.isInAppEnabled()) {
+            messagingTemplate.convertAndSendToUser(userId, "/queue/notifications", response);
+        }
+        if (preferences.isEmailEnabled()) {
+            externalNotificationDispatcher.sendEmail(userId, title, message);
+        }
+        if (preferences.isPushEnabled()) {
+            externalNotificationDispatcher.sendPush(userId, title, message);
+        }
         return response;
     }
 
