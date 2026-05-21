@@ -72,6 +72,7 @@ class AuctionOrderEventConsumerTest {
 
         verify(notificationService).notifyBidPlaced("buyer-1", "auction-1", new BigDecimal("125.00"), "evt-bid-1");
         verify(auctionRealtimeService).publishAuctionEvent(eq("auction.bid-placed.v1"), argThat(payload -> payload.path("auctionId").asText().equals("auction-1")));
+        verify(orderMetrics).recordRabbitConsumed();
     }
 
     @Test
@@ -135,6 +136,9 @@ class AuctionOrderEventConsumerTest {
         verify(orderService).createOrderFromAuctionWon(argThat(matchesAuctionWonRequest()));
         verify(notificationService).notifyAuctionWon("buyer-1", "auction-1", "evt-ended-1");
         verify(notificationService).notifyAuctionEnded("seller-1", "auction-1", true, "evt-ended-1");
+        verify(orderMetrics).recordRabbitConsumed();
+        verify(orderMetrics).recordNotificationSent();
+        verify(orderMetrics).recordOrderCreated();
     }
 
     @Test
