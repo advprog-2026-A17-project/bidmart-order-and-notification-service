@@ -24,8 +24,8 @@ public class WalletClient {
         this.internalToken = internalToken;
     }
 
-    public void payoutSeller(String sellerId, long amountCents, String orderId) {
-        WalletPayoutRequest request = new WalletPayoutRequest(sellerId, amountCents, orderId);
+    public void payoutSeller(String sellerId, long amount, String orderId) {
+        WalletPayoutRequest request = new WalletPayoutRequest(sellerId, amount, orderId);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.add("x-internal-service-token", internalToken);
@@ -34,12 +34,12 @@ public class WalletClient {
         restTemplate.postForEntity(baseUrl + "/api/v1/wallet/payout", entity, String.class);
     }
 
-    public void refundBuyer(String buyerId, long amountCents) {
+    public void refundBuyer(String buyerId, long amount) {
         HttpHeaders headers = new HttpHeaders();
         headers.add("x-internal-service-token", internalToken);
         HttpEntity<Void> entity = new HttpEntity<>(headers);
         restTemplate.postForEntity(
-                baseUrl + "/api/v1/wallet/" + buyerId + "/top-up?amount=" + amountCents + "&role=BUYER",
+                baseUrl + "/api/v1/wallet/" + buyerId + "/top-up?amount=" + amount + "&role=BUYER",
                 entity,
                 String.class
         );

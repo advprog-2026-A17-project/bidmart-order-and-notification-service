@@ -44,9 +44,9 @@ public class OrderPayoutScheduler {
                 .findByStatusAndPayoutReleasedAtIsNullAndConfirmedAtBefore(OrderStatus.CONFIRMED, cutoff);
 
         for (BidmartOrder order : eligibleOrders) {
-            long amountCents = toCents(order.getFinalPrice());
+            long amount = toRupiah(order.getFinalPrice());
             try {
-                walletClient.payoutSeller(order.getSellerId(), amountCents, order.getId());
+                walletClient.payoutSeller(order.getSellerId(), amount, order.getId());
                 order.markPayoutReleased();
             } catch (RestClientException ex) {
                 logger.warn("Failed to release payout for order {}: {}", order.getId(), ex.getMessage());
@@ -54,10 +54,10 @@ public class OrderPayoutScheduler {
         }
     }
 
-    private long toCents(BigDecimal amount) {
+    private long toRupiah(BigDecimal amount) {
         if (amount == null) {
             return 0L;
         }
-        return amount.movePointRight(2).setScale(0, java.math.RoundingMode.UNNECESSARY).longValueExact();
+        return amount.setScale(0, java.math.RoundingMode.UNNECESSARY).longValueExact();
     }
 }
