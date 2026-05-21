@@ -20,6 +20,7 @@ public class NotificationService {
     private static final String OUTBID = "OUTBID";
     private static final String AUCTION_WON = "AUCTION_WON";
     private static final String AUCTION_ENDED = "AUCTION_ENDED";
+    private static final String USER_DISABLED = "USER_DISABLED";
 
     private final NotificationRepository notificationRepository;
     private final SimpMessagingTemplate messagingTemplate;
@@ -110,6 +111,20 @@ public class NotificationService {
                 "Auction won",
                 "You won auction " + auctionId + ".",
                 sourceEventId(eventId, AUCTION_WON)
+        );
+    }
+
+    @Transactional
+    public NotificationResponse notifyUserDisabled(String userId, String email, String dedupeKey) {
+        String message = email == null || email.isBlank()
+                ? "Your account has been disabled by an administrator."
+                : "Your account (" + email + ") has been disabled by an administrator.";
+        return createAndPublish(
+                userId,
+                USER_DISABLED,
+                "Account disabled",
+                message,
+                dedupeKey.isBlank() ? userId + ":" + USER_DISABLED : dedupeKey
         );
     }
 

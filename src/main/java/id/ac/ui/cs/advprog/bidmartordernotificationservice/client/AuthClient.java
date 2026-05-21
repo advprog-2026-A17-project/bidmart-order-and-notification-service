@@ -12,6 +12,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
+import java.util.Optional;
 
 @Component
 public class AuthClient {
@@ -36,6 +37,32 @@ public class AuthClient {
      * Fetch the shipping address stored in a buyer's auth profile.
      * Returns null if the user is not found or the service is unavailable.
      */
+    public Optional<String> fetchUserEmail(String userId) {
+        try {
+            String url = baseUrl + "/api/v1/auth/internal/users/" + userId + "/profile";
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-Internal-Service-Token", internalServiceToken);
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    Map.class
+            );
+            @SuppressWarnings("unchecked")
+            Map<String, Object> profile = response.getBody();
+            if (profile == null) {
+                return Optional.empty();
+            }
+            Object email = profile.get("email");
+            return email == null || email.toString().isBlank()
+                    ? Optional.empty()
+                    : Optional.of(email.toString());
+        } catch (RestClientException e) {
+            log.warn("Could not fetch email for user {}: {}", userId, e.getMessage());
+            return Optional.empty();
+        }
+    }
+
     public String fetchShippingAddress(String userId) {
         try {
             String url = baseUrl + "/api/v1/auth/internal/users/" + userId + "/profile";

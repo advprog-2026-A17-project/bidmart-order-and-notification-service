@@ -9,9 +9,12 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.messaging.support.MessageHeaderAccessor;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
+import java.time.Instant;
+import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -59,16 +62,21 @@ class NotificationStompAuthorizationInterceptorTest {
         String token = Jwts.builder()
                 .subject("buyer-1")
                 .claim("type", "access")
+                .issuedAt(Date.from(Instant.now()))
+                .expiration(Date.from(Instant.now().plusSeconds(3600)))
                 .signWith(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
                 .compact();
         StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
+        accessor.setLeaveMutable(true);
         accessor.setNativeHeader("Authorization", "Bearer " + token);
         Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
 
         Message<?> result = interceptor.preSend(message, noopChannel());
 
         assertNotNull(result);
-        Principal principal = accessor.getUser();
+        StompHeaderAccessor updated = MessageHeaderAccessor.getAccessor(result, StompHeaderAccessor.class);
+        assertNotNull(updated);
+        Principal principal = updated.getUser();
         assertNotNull(principal);
         assertEquals("buyer-1", principal.getName());
     }
