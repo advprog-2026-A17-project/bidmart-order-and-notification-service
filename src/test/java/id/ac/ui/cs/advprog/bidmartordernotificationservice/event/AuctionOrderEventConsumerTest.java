@@ -70,7 +70,7 @@ class AuctionOrderEventConsumerTest {
                 }
                 """);
 
-        verify(notificationService).notifyBidPlaced("buyer-1", "auction-1", new BigDecimal("125.00"), "evt-bid-1");
+        verify(notificationService).notifyBidPlaced("buyer-1", "auction-1", 12500L, "evt-bid-1");
         verify(auctionRealtimeService).publishAuctionEvent(eq("auction.bid-placed.v1"), argThat(payload -> payload.path("auctionId").asText().equals("auction-1")));
         verify(orderMetrics).recordRabbitConsumed();
     }
@@ -110,7 +110,7 @@ class AuctionOrderEventConsumerTest {
                 }
                 """);
 
-        verify(notificationService).notifyOutbid("buyer-1", "auction-1", new BigDecimal("140.00"), "evt-outbid-1");
+        verify(notificationService).notifyOutbid("buyer-1", "auction-1", 14000L, "evt-outbid-1");
     }
 
     @Test
@@ -163,11 +163,11 @@ class AuctionOrderEventConsumerTest {
         verify(notificationService).notifyBidPlaced(
                 eq("buyer-dup"),
                 eq("auction-dup"),
-                eq(new BigDecimal("100.00")),
+                eq(10000L),
                 eq("evt-dup-1")
         );
         verify(notificationService, org.mockito.Mockito.times(1))
-                .notifyBidPlaced(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString());
+                .notifyBidPlaced(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString());
     }
 
     @Test
@@ -186,7 +186,7 @@ class AuctionOrderEventConsumerTest {
                 }
                 """);
 
-        verify(notificationService, never()).notifyBidPlaced(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString());
+        verify(notificationService, never()).notifyBidPlaced(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString());
         verify(auctionRealtimeService).publishAuctionEvent(eq("auction.bid-placed.v1"), org.mockito.ArgumentMatchers.any());
     }
 
@@ -206,7 +206,7 @@ class AuctionOrderEventConsumerTest {
                 }
                 """);
 
-        verify(notificationService).notifyBidPlaced("buyer-price", "auction-price", new BigDecimal("250.00"), "evt-current-price");
+        verify(notificationService).notifyBidPlaced("buyer-price", "auction-price", 25000L, "evt-current-price");
     }
 
     @Test
@@ -231,7 +231,7 @@ class AuctionOrderEventConsumerTest {
         verify(orderService).createOrderFromAuctionWon(argThat(request ->
                 request.eventId().equals("evt-legacy-won")
                         && request.buyerId().equals("buyer-legacy")
-                        && request.finalPrice().compareTo(new BigDecimal("88.00")) == 0
+                        && request.finalPrice().compareTo(new java.math.BigDecimal("88")) == 0
                         && request.shippingAddress().equals("Jl. Legacy 1")
         ));
         verify(notificationService).notifyAuctionWon("buyer-legacy", "auction-legacy", "evt-legacy-won");
@@ -278,7 +278,7 @@ class AuctionOrderEventConsumerTest {
                 }
                 """);
 
-        verify(notificationService).notifyBidPlaced("buyer-type", "auction-type", new BigDecimal("30.00"), "evt-legacy-type");
+        verify(notificationService).notifyBidPlaced("buyer-type", "auction-type", 3000L, "evt-legacy-type");
     }
 
     @Test
@@ -300,7 +300,7 @@ class AuctionOrderEventConsumerTest {
         verify(notificationService, never()).notifyOutbid(
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.anyLong(),
                 org.mockito.ArgumentMatchers.anyString()
         );
         verify(auctionRealtimeService).publishAuctionEvent(eq("auction.outbid.v1"), org.mockito.ArgumentMatchers.any());
@@ -325,7 +325,7 @@ class AuctionOrderEventConsumerTest {
         verify(notificationService).notifyBidPlaced(
                 eq("buyer-empty"),
                 eq("auction-empty"),
-                argThat(amount -> amount.compareTo(BigDecimal.ZERO) == 0),
+                eq(0L),
                 eq("evt-empty-amount")
         );
     }
@@ -346,7 +346,7 @@ class AuctionOrderEventConsumerTest {
                 }
                 """);
 
-        verify(notificationService).notifyBidPlaced("buyer-text", "auction-text", new BigDecimal("75.00"), "evt-text-cents");
+        verify(notificationService).notifyBidPlaced("buyer-text", "auction-text", 7500L, "evt-text-cents");
     }
 
     @Test
@@ -371,7 +371,7 @@ class AuctionOrderEventConsumerTest {
 
         verify(orderService).createOrderFromAuctionWon(argThat(request ->
                 request.shippingAddress().equals("Jl. Payload No. 7")
-                        && request.finalPrice().compareTo(new BigDecimal("120.00")) == 0
+                        && request.finalPrice().compareTo(new java.math.BigDecimal("120")) == 0
         ));
         verify(authClient, never()).fetchShippingAddress(org.mockito.ArgumentMatchers.anyString());
     }
@@ -406,7 +406,7 @@ class AuctionOrderEventConsumerTest {
                 && request.listingId().equals("listing-1")
                 && request.sellerId().equals("seller-1")
                 && request.buyerId().equals("buyer-1")
-                && request.finalPrice().compareTo(new BigDecimal("150.00")) == 0
+                && request.finalPrice().compareTo(new java.math.BigDecimal("150")) == 0
                 && request.shippingAddress().equals("Jl. Melati No. 10, Jakarta");
     }
 }

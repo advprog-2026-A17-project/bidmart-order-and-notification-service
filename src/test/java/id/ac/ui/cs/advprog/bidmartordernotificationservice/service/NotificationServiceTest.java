@@ -46,13 +46,13 @@ class NotificationServiceTest {
         NotificationResponse response = notificationService.notifyBidPlaced(
                 "buyer-1",
                 "auction-1",
-                new BigDecimal("12500"),
+                12_500L,
                 "evt-1"
         );
 
         assertEquals("BID_PLACED", response.type());
         assertEquals("Bid placed", response.title());
-        assertEquals("Your bid of $125.00 was placed on auction auction-1.", response.message());
+        assertEquals("Your bid of IDR 125.00 was placed on auction auction-1.", response.message());
         verify(messagingTemplate).convertAndSendToUser(eq("buyer-1"), eq("/queue/notifications"), any(NotificationResponse.class));
     }
 
@@ -65,12 +65,12 @@ class NotificationServiceTest {
         NotificationResponse response = notificationService.notifyOutbid(
                 "buyer-2",
                 "auction-2",
-                new BigDecimal("14000"),
+                14_000L,
                 "evt-2"
         );
 
         assertEquals("OUTBID", response.type());
-        assertEquals("A higher bid of $140.00 was placed on auction auction-2.", response.message());
+        assertEquals("A higher bid of IDR 140.00 was placed on auction auction-2.", response.message());
     }
 
     @Test
@@ -126,7 +126,7 @@ class NotificationServiceTest {
         NotificationResponse response = notificationService.notifyBidPlaced(
                 "buyer-6",
                 "auction-6",
-                new BigDecimal("100"),
+                100L,
                 "evt-6"
         );
 

@@ -25,6 +25,18 @@ public class OrderAccessPolicy {
         }
     }
 
+    public void requireAdmin(String rolesHeader) {
+        if (rolesHeader == null || rolesHeader.isBlank()) {
+            throw new ForbiddenOrderActionException("Administrator role is required");
+        }
+        for (String role : rolesHeader.split(",")) {
+            if ("ADMIN".equalsIgnoreCase(role.trim())) {
+                return;
+            }
+        }
+        throw new ForbiddenOrderActionException("Administrator role is required");
+    }
+
     private void requireActor(String actualUserId, String requiredUserId, String message) {
         if (!requiredUserId.equals(actualUserId)) {
             throw new ForbiddenOrderActionException(message);
