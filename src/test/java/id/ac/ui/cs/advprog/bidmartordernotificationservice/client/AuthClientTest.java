@@ -78,10 +78,45 @@ class AuthClientTest {
     }
 
     @Test
+    void fetchUserEmailReturnsEmptyWhenAuthServiceFails() {
+        server.expect(requestTo("http://auth.test/api/v1/auth/internal/users/buyer-3/profile"))
+                .andRespond(withServerError());
+
+        assertTrue(authClient.fetchUserEmail("buyer-3").isEmpty());
+    }
+
+    @Test
+    void fetchUserEmailReturnsEmptyWhenProfileBodyMissing() {
+        server.expect(requestTo("http://auth.test/api/v1/auth/internal/users/buyer-4/profile"))
+                .andRespond(withSuccess("null", MediaType.APPLICATION_JSON));
+
+        assertTrue(authClient.fetchUserEmail("buyer-4").isEmpty());
+    }
+
+    @Test
+    void fetchUserEmailReturnsEmptyWhenEmailBlank() {
+        server.expect(requestTo("http://auth.test/api/v1/auth/internal/users/buyer-5/profile"))
+                .andRespond(withSuccess("""
+                        {"email":"   "}
+                        """, MediaType.APPLICATION_JSON));
+
+        assertTrue(authClient.fetchUserEmail("buyer-5").isEmpty());
+    }
+
+    @Test
+    void fetchShippingAddressReturnsNullWhenProfileBodyMissing() {
+        server.expect(requestTo("http://auth.test/api/v1/auth/internal/users/buyer-6/profile"))
+                .andRespond(withSuccess("null", MediaType.APPLICATION_JSON));
+
+        assertNull(authClient.fetchShippingAddress("buyer-6"));
+    }
+
+    @Test
     void fetchShippingAddressReturnsNullWhenAuthServiceFails() {
         server.expect(requestTo("http://auth.test/api/v1/auth/internal/users/buyer-3/profile"))
                 .andRespond(withServerError());
 
         assertNull(authClient.fetchShippingAddress("buyer-3"));
     }
+
 }

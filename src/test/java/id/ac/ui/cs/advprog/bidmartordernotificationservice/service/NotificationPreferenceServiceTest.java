@@ -42,6 +42,37 @@ class NotificationPreferenceServiceTest {
     }
 
     @Test
+    void updateForUserPersistsInAppPreference() {
+        NotificationPreference existing = NotificationPreference.defaults("buyer-3");
+        when(repository.findById("buyer-3")).thenReturn(Optional.of(existing));
+        when(repository.save(existing)).thenReturn(existing);
+
+        NotificationPreferenceResponse response = service.updateForUser(
+                "buyer-3",
+                new UpdateNotificationPreferenceRequest(null, null, false)
+        );
+
+        assertFalse(response.inApp());
+        verify(repository).save(existing);
+    }
+
+    @Test
+    void updateForUserCanToggleInAppPreference() {
+        NotificationPreference existing = NotificationPreference.defaults("buyer-3");
+        when(repository.findById("buyer-3")).thenReturn(Optional.of(existing));
+        when(repository.save(existing)).thenReturn(existing);
+
+        NotificationPreferenceResponse response = service.updateForUser(
+                "buyer-3",
+                new UpdateNotificationPreferenceRequest(null, null, false)
+        );
+
+        assertFalse(response.inApp());
+        assertFalse(existing.isInAppEnabled());
+        verify(repository).save(existing);
+    }
+
+    @Test
     void updateForUserPersistsPartialChanges() {
         NotificationPreference existing = NotificationPreference.defaults("buyer-2");
         when(repository.findById("buyer-2")).thenReturn(Optional.of(existing));

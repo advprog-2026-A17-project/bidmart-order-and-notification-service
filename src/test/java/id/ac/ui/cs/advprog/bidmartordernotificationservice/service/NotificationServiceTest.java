@@ -172,6 +172,60 @@ class NotificationServiceTest {
     }
 
     @Test
+    void notifyUserDisabledUsesEmailInMessageWhenPresent() {
+        when(notificationRepository.findByUserIdAndTypeAndSourceEventId("user-1", "USER_DISABLED", "dedupe-1"))
+                .thenReturn(Optional.empty());
+        when(notificationRepository.save(any(BidmartNotification.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        NotificationResponse response = notificationService.notifyUserDisabled(
+                "user-1",
+                "buyer@example.com",
+                "dedupe-1"
+        );
+
+        assertEquals("USER_DISABLED", response.type());
+        assertEquals("Your account (buyer@example.com) has been disabled by an administrator.", response.message());
+    }
+
+    @Test
+    void notifyUserDisabledUsesGenericMessageWhenEmailMissing() {
+        when(notificationRepository.findByUserIdAndTypeAndSourceEventId("user-2", "USER_DISABLED", "user-2:USER_DISABLED"))
+                .thenReturn(Optional.empty());
+        when(notificationRepository.save(any(BidmartNotification.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        NotificationResponse response = notificationService.notifyUserDisabled("user-2", null, " ");
+
+        assertEquals("Your account has been disabled by an administrator.", response.message());
+    }
+
+    @Test
+    void notifyUserDisabledIncludesEmailWhenPresent() {
+        when(notificationRepository.findByUserIdAndTypeAndSourceEventId("user-1", "USER_DISABLED", "dedupe-1"))
+                .thenReturn(Optional.empty());
+        when(notificationRepository.save(any(BidmartNotification.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        NotificationResponse response = notificationService.notifyUserDisabled(
+                "user-1",
+                "user@test.com",
+                "dedupe-1"
+        );
+
+        assertEquals("USER_DISABLED", response.type());
+        assertEquals("Your account (user@test.com) has been disabled by an administrator.", response.message());
+    }
+
+    @Test
+    void notifyUserDisabledUsesGenericMessageWithoutEmail() {
+        when(notificationRepository.findByUserIdAndTypeAndSourceEventId("user-2", "USER_DISABLED", "user-2:USER_DISABLED"))
+                .thenReturn(Optional.empty());
+        when(notificationRepository.save(any(BidmartNotification.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        NotificationResponse response = notificationService.notifyUserDisabled("user-2", " ", "");
+
+        assertEquals("Your account has been disabled by an administrator.", response.message());
+    }
+
+    @Test
     void listForUserMapsRepositoryResults() {
         BidmartNotification notification = BidmartNotification.create(
                 "buyer-9",

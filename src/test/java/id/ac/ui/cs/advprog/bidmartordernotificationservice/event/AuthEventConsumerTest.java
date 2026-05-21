@@ -57,6 +57,26 @@ class AuthEventConsumerTest {
     }
 
     @Test
+    void missingEventTypeHeaderIsIgnored() throws Exception {
+        MessageProperties properties = new MessageProperties();
+        Message message = new Message(
+                """
+                {"userId":"user-2","email":"buyer@test.com","occurredAt":"2026-05-21T10:00:00Z"}
+                """.getBytes(StandardCharsets.UTF_8),
+                properties
+        );
+
+        consumer.consume(message);
+
+        verify(orderMetrics).recordRabbitConsumed();
+        verify(notificationService, never()).notifyUserDisabled(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString()
+        );
+    }
+
+    @Test
     void nonUserDisabledEventTypeIsIgnored() throws Exception {
         Message message = messageWithEventType(
                 "UserRegistered",

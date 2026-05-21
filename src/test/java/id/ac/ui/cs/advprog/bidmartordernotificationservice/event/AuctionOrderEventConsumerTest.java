@@ -307,6 +307,30 @@ class AuctionOrderEventConsumerTest {
     }
 
     @Test
+    void bidPlacedTreatsBlankAmountTextAsZero() throws Exception {
+        consumer.consume("""
+                {
+                  "eventId": "evt-empty-amount",
+                  "eventType": "auction.bid-placed.v1",
+                  "eventVersion": 1,
+                  "aggregateId": "auction-empty",
+                  "payload": {
+                    "auctionId": "auction-empty",
+                    "bidderId": "buyer-empty",
+                    "amountCents": "   "
+                  }
+                }
+                """);
+
+        verify(notificationService).notifyBidPlaced(
+                eq("buyer-empty"),
+                eq("auction-empty"),
+                argThat(amount -> amount.compareTo(BigDecimal.ZERO) == 0),
+                eq("evt-empty-amount")
+        );
+    }
+
+    @Test
     void bidPlacedParsesAmountCentsFromTextNode() throws Exception {
         consumer.consume("""
                 {
