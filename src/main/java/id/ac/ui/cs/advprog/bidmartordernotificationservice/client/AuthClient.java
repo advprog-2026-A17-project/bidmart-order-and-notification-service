@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.bidmartordernotificationservice.client;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -18,6 +19,8 @@ import java.util.Optional;
 public class AuthClient {
 
     private static final Logger log = LoggerFactory.getLogger(AuthClient.class);
+    private static final ParameterizedTypeReference<Map<String, Object>> PROFILE_TYPE =
+            new ParameterizedTypeReference<>() {};
 
     private final RestTemplate restTemplate;
     private final String baseUrl;
@@ -42,13 +45,12 @@ public class AuthClient {
             String url = baseUrl + "/api/v1/auth/internal/users/" + userId + "/profile";
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Internal-Service-Token", internalServiceToken);
-            ResponseEntity<Map> response = restTemplate.exchange(
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
                     new HttpEntity<>(headers),
-                    Map.class
+                    PROFILE_TYPE
             );
-            @SuppressWarnings("unchecked")
             Map<String, Object> profile = response.getBody();
             if (profile == null) {
                 return Optional.empty();
@@ -68,19 +70,18 @@ public class AuthClient {
             String url = baseUrl + "/api/v1/auth/internal/users/" + userId + "/profile";
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Internal-Service-Token", internalServiceToken);
-            ResponseEntity<Map> response = restTemplate.exchange(
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
                     new HttpEntity<>(headers),
-                    Map.class
+                    PROFILE_TYPE
             );
-            @SuppressWarnings("unchecked")
             Map<String, Object> profile = response.getBody();
             if (profile == null) {
                 return null;
             }
-            Object address = profile.get("shippingAddress");
-            return address != null ? address.toString() : null;
+            Object shippingAddress = profile.get("shippingAddress");
+            return shippingAddress == null ? null : shippingAddress.toString();
         } catch (RestClientException e) {
             log.warn("Could not fetch shipping address for user {}: {}", userId, e.getMessage());
             return null;

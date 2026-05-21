@@ -1,6 +1,5 @@
 package id.ac.ui.cs.advprog.bidmartordernotificationservice.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.PushSubscription;
 import nl.martijndwars.webpush.Notification;
