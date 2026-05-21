@@ -45,4 +45,25 @@ public class OrderRabbitConfig {
                 .to(bidmartEventsExchange)
                 .with("auction.ended.v1");
     }
+
+    @Bean
+    TopicExchange authEventsExchange(
+            @Value("${bidmart.rabbitmq.auth-events-exchange:bidmart.auth.events}") String exchangeName
+    ) {
+        return new TopicExchange(exchangeName, true, false);
+    }
+
+    @Bean
+    Queue orderAuthEventsQueue(
+            @Value("${bidmart.rabbitmq.order.auth-events-queue:order-notification.auth-events}") String queueName
+    ) {
+        return new Queue(queueName, true);
+    }
+
+    @Bean
+    Binding orderUserDisabledBinding(Queue orderAuthEventsQueue, TopicExchange authEventsExchange) {
+        return BindingBuilder.bind(orderAuthEventsQueue)
+                .to(authEventsExchange)
+                .with("auth.userdisabled.v1");
+    }
 }
