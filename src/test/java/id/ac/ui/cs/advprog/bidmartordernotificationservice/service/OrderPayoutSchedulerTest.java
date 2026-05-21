@@ -65,7 +65,7 @@ class OrderPayoutSchedulerTest {
         when(orderRepository.findByStatusAndPayoutReleasedAtIsNullAndConfirmedAtBefore(eq(OrderStatus.CONFIRMED), any(Instant.class)))
                 .thenReturn(List.of(failing, success));
 
-        doThrow(new RuntimeException("wallet down")).when(walletClient)
+        doThrow(new org.springframework.web.client.RestClientException("wallet down")).when(walletClient)
                 .payoutSeller(eq("seller-fail"), eq(15000L), eq(failing.getId()));
 
         scheduler.releaseConfirmedOrderPayouts();

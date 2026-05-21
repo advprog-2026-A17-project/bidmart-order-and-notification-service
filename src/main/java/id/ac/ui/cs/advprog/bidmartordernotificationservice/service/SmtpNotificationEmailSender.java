@@ -1,6 +1,8 @@
 package id.ac.ui.cs.advprog.bidmartordernotificationservice.service;
 
+import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import org.springframework.mail.MailException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,7 +48,7 @@ public class SmtpNotificationEmailSender implements NotificationEmailSender {
             helper.setText(message, htmlBody(subject, message));
             mailSender.send(mimeMessage);
             log.info("Notification email sent to {}", toEmail);
-        } catch (Exception e) {
+        } catch (MessagingException | MailException e) {
             log.error("Failed to send notification email to {}: {}", toEmail, e.getMessage(), e);
         }
     }

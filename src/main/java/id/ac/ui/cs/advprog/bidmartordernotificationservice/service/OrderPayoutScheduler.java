@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -47,7 +48,7 @@ public class OrderPayoutScheduler {
             try {
                 walletClient.payoutSeller(order.getSellerId(), amountCents, order.getId());
                 order.markPayoutReleased();
-            } catch (RuntimeException ex) {
+            } catch (RestClientException ex) {
                 logger.warn("Failed to release payout for order {}: {}", order.getId(), ex.getMessage());
             }
         }

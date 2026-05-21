@@ -36,7 +36,7 @@ public class OrderController {
     public OrderController(
             OrderService orderService,
             OrderAccessPolicy orderAccessPolicy,
-            @Value("${app.internal-service-token:bidmart-local-internal-token}") String internalServiceToken
+            @Value("${app.internal-service-token}") String internalServiceToken
     ) {
         this.orderService = orderService;
         this.orderAccessPolicy = orderAccessPolicy;

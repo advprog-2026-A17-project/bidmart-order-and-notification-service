@@ -1,8 +1,11 @@
 package id.ac.ui.cs.advprog.bidmartordernotificationservice.config;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
@@ -25,6 +28,7 @@ import java.util.regex.Pattern;
 @Component
 public class NotificationStompAuthorizationInterceptor implements ChannelInterceptor {
 
+    private static final Logger log = LoggerFactory.getLogger(NotificationStompAuthorizationInterceptor.class);
     private static final String TOKEN_TYPE_ACCESS = "access";
     private static final Pattern USER_NOTIFICATION_TOPIC =
             Pattern.compile("^/topic/notifications/users/([^/]+)$");
@@ -33,7 +37,7 @@ public class NotificationStompAuthorizationInterceptor implements ChannelInterce
     private final SecretKey signingKey;
 
     public NotificationStompAuthorizationInterceptor(
-            @Value("${bidmart.auth.jwt-secret:bidmart-auth-secret-key-bidmart-auth-secret-key}") String jwtSecret
+            @Value("${bidmart.auth.jwt-secret}") String jwtSecret
     ) {
         this.signingKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
@@ -81,8 +85,9 @@ public class NotificationStompAuthorizationInterceptor implements ChannelInterce
                 return;
             }
             accessor.setUser(new StompUserPrincipal(userId));
-        } catch (Exception ignored) {
+        } catch (JwtException ex) {
             // Anonymous connect remains possible for public auction topics; user queues require Principal.
+            log.debug("STOMP CONNECT rejected bearer token: {}", ex.getMessage());
         }
     }
 

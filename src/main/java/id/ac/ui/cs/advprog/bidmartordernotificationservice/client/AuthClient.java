@@ -26,7 +26,7 @@ public class AuthClient {
     public AuthClient(
             RestTemplate restTemplate,
             @Value("${bidmart.auth.base-url:http://localhost:8080}") String baseUrl,
-            @Value("${bidmart.auth.internal-service-token:bidmart-local-internal-token}") String internalServiceToken
+            @Value("${bidmart.auth.internal-service-token}") String internalServiceToken
     ) {
         this.restTemplate = restTemplate;
         this.baseUrl = baseUrl;

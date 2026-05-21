@@ -1,10 +1,12 @@
 package id.ac.ui.cs.advprog.bidmartordernotificationservice.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.PushSubscription;
 import nl.martijndwars.webpush.Notification;
 import nl.martijndwars.webpush.PushService;
 import nl.martijndwars.webpush.Subscription;
+import org.jose4j.lang.JoseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,7 +14,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.concurrent.ExecutionException;
 import java.util.List;
 import java.util.Map;
 
@@ -67,7 +71,10 @@ public class WebPushNotificationSender implements PushNotificationSender {
                 );
                 pushService.send(new Notification(subscription, payload));
                 log.info("Web push sent to user {} endpoint {}", userId, stored.getEndpoint());
-            } catch (Exception e) {
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                log.warn("Web push interrupted for user {}: {}", userId, ex.getMessage());
+            } catch (GeneralSecurityException | IOException | JoseException | ExecutionException e) {
                 log.warn("Web push failed for user {}: {}", userId, e.getMessage());
             }
         }
