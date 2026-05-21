@@ -48,6 +48,62 @@ class PushSubscriptionServiceTest {
     }
 
     @Test
+    void registerUpdatesExistingSubscriptionKeys() {
+        PushSubscription existing = PushSubscription.create(
+                "buyer-2",
+                "https://push.example/2",
+                "old-p256dh",
+                "old-auth"
+        );
+        when(repository.findByUserIdAndEndpoint("buyer-2", "https://push.example/2"))
+                .thenReturn(java.util.Optional.of(existing));
+        when(repository.save(existing)).thenReturn(existing);
+
+        service.register(
+                "buyer-2",
+                new RegisterPushSubscriptionRequest(
+                        "https://push.example/2",
+                        new RegisterPushSubscriptionRequest.PushSubscriptionKeys("new-p256dh", "new-auth")
+                )
+        );
+
+        assertEquals("new-p256dh", existing.getP256dhKey());
+        assertEquals("new-auth", existing.getAuthKey());
+        verify(repository).save(existing);
+    }
+
+    @Test
+    void registerRejectsMissingKeys() {
+        assertThrows(IllegalArgumentException.class, () -> service.register(
+                "buyer-3",
+                new RegisterPushSubscriptionRequest(
+                        "https://push.example/3",
+                        null
+                )
+        ));
+    }
+
+    @Test
+    void listForUserReturnsRepositoryResults() {
+        PushSubscription subscription = PushSubscription.create(
+                "buyer-4",
+                "https://push.example/4",
+                "p256dh",
+                "auth"
+        );
+        when(repository.findByUserId("buyer-4")).thenReturn(java.util.List.of(subscription));
+
+        assertEquals(1, service.listForUser("buyer-4").size());
+    }
+
+    @Test
+    void removeAllForUserDeletesSubscriptions() {
+        service.removeAllForUser("buyer-5");
+
+        verify(repository).deleteByUserId("buyer-5");
+    }
+
+    @Test
     void registerRejectsMissingEndpoint() {
         assertThrows(IllegalArgumentException.class, () -> service.register(
                 "buyer-1",

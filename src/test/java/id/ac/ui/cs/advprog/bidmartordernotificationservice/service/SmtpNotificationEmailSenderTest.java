@@ -9,6 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 
 import java.io.InputStream;
@@ -17,6 +18,7 @@ import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,6 +27,16 @@ class SmtpNotificationEmailSenderTest {
 
     @Mock
     private JavaMailSender mailSender;
+
+    @Test
+    void sendNotificationEmailLogsFailureWithoutThrowing() throws Exception {
+        SmtpNotificationEmailSender sender = new SmtpNotificationEmailSender(mailSender, "no-reply@bidmart.test");
+        MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
+        when(mailSender.createMimeMessage()).thenReturn(message);
+        doThrow(new MailSendException("smtp down")).when(mailSender).send(org.mockito.ArgumentMatchers.any(MimeMessage.class));
+
+        sender.sendNotificationEmail("user@example.com", "Auction won", "You won auction auction-9.");
+    }
 
     @Test
     void sendNotificationEmailUsesBidMartTemplate() throws Exception {
