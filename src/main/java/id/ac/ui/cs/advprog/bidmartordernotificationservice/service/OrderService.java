@@ -1,14 +1,22 @@
 package id.ac.ui.cs.advprog.bidmartordernotificationservice.service;
 
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.client.WalletClient;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.AuctionWonEventRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.CreateOrderRequest;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.OpenDisputeRequest;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.ResolveDisputeRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.UpdateOrderStatusRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.exception.OrderNotFoundException;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.BidmartOrder;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.DisputeWinner;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.OrderStatus;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.repository.OrderRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 @Service
@@ -16,10 +24,16 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final NotificationService notificationService;
+    private final WalletClient walletClient;
 
-    public OrderService(OrderRepository orderRepository, NotificationService notificationService) {
+    public OrderService(
+            OrderRepository orderRepository,
+            NotificationService notificationService,
+            WalletClient walletClient
+    ) {
         this.orderRepository = orderRepository;
         this.notificationService = notificationService;
+        this.walletClient = walletClient;
     }
 
     @Transactional
@@ -88,5 +102,37 @@ public class OrderService {
         BidmartOrder order = getOrder(orderId);
         order.confirmReceipt();
         return order;
+    }
+
+    @Transactional
+    public BidmartOrder openDispute(String orderId, OpenDisputeRequest request) {
+        BidmartOrder order = getOrder(orderId);
+        order.openDispute(request.reason(), request.details());
+        BidmartOrder saved = orderRepository.save(order);
+        notificationService.notifyOrderDisputed(saved);
+        return saved;
+    }
+
+    @Transactional
+    public BidmartOrder resolveDispute(String orderId, ResolveDisputeRequest request, String resolvedBy) {
+        BidmartOrder order = getOrder(orderId);
+        order.resolveDispute(request.winner(), resolvedBy);
+        if (request.winner() == DisputeWinner.BUYER) {
+            try {
+                walletClient.refundBuyer(order.getBuyerId(), toCents(order.getFinalPrice()));
+            } catch (RestClientException ex) {
+                throw new IllegalStateException("Failed to refund buyer wallet balance", ex);
+            }
+        }
+        BidmartOrder saved = orderRepository.save(order);
+        notificationService.notifyDisputeResolved(saved);
+        return saved;
+    }
+
+    private long toCents(BigDecimal amount) {
+        if (amount == null) {
+            return 0L;
+        }
+        return amount.movePointRight(2).setScale(0, RoundingMode.UNNECESSARY).longValueExact();
     }
 }

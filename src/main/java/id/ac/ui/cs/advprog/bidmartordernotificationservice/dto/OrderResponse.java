@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.bidmartordernotificationservice.dto;
 
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.BidmartOrder;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.DisputeWinner;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.OrderStatus;
 
 import java.math.BigDecimal;
@@ -18,6 +19,9 @@ public record OrderResponse(
         String shippingStatus,
         String trackingNumber,
         String carrier,
+        String disputeReason,
+        String disputeDetails,
+        DisputeWinner disputeWinner,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -35,6 +39,9 @@ public record OrderResponse(
                 shippingStatusFor(order.getStatus()),
                 order.getTrackingNumber(),
                 order.getCarrier(),
+                order.getDisputeReason(),
+                order.getDisputeDetails(),
+                order.getDisputeWinner(),
                 order.getCreatedAt(),
                 order.getUpdatedAt()
         );

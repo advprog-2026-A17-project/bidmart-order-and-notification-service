@@ -21,6 +21,8 @@ public class NotificationService {
     private static final String AUCTION_WON = "AUCTION_WON";
     private static final String AUCTION_ENDED = "AUCTION_ENDED";
     private static final String USER_DISABLED = "USER_DISABLED";
+    private static final String ORDER_DISPUTED = "ORDER_DISPUTED";
+    private static final String ORDER_DISPUTE_RESOLVED = "ORDER_DISPUTE_RESOLVED";
 
     private final NotificationRepository notificationRepository;
     private final SimpMessagingTemplate messagingTemplate;
@@ -75,14 +77,14 @@ public class NotificationService {
     public NotificationResponse notifyBidPlaced(
             String userId,
             String auctionId,
-            BigDecimal amountCents,
+            long amountCents,
             String eventId
     ) {
         return createAndPublish(
                 userId,
                 BID_PLACED,
                 "Bid placed",
-                "Your bid of " + formatCents(amountCents) + " was placed on auction " + auctionId + ".",
+                "Your bid of " + formatIdrFromCents(amountCents) + " was placed on auction " + auctionId + ".",
                 sourceEventId(eventId, BID_PLACED)
         );
     }
@@ -91,14 +93,14 @@ public class NotificationService {
     public NotificationResponse notifyOutbid(
             String userId,
             String auctionId,
-            BigDecimal amountCents,
+            long amountCents,
             String eventId
     ) {
         return createAndPublish(
                 userId,
                 OUTBID,
                 "Outbid",
-                "A higher bid of " + formatCents(amountCents) + " was placed on auction " + auctionId + ".",
+                "A higher bid of " + formatIdrFromCents(amountCents) + " was placed on auction " + auctionId + ".",
                 sourceEventId(eventId, OUTBID)
         );
     }
@@ -111,6 +113,38 @@ public class NotificationService {
                 "Auction won",
                 "You won auction " + auctionId + ".",
                 sourceEventId(eventId, AUCTION_WON)
+        );
+    }
+
+    @Transactional
+    public NotificationResponse notifyOrderDisputed(BidmartOrder order) {
+        return createAndPublish(
+                order.getSellerId(),
+                ORDER_DISPUTED,
+                "Order disputed",
+                "Buyer opened a dispute for order " + order.getId() + ".",
+                sourceEventId(order, ORDER_DISPUTED)
+        );
+    }
+
+    @Transactional
+    public NotificationResponse notifyDisputeResolved(BidmartOrder order) {
+        String buyerMessage = order.getDisputeWinner() == id.ac.ui.cs.advprog.bidmartordernotificationservice.model.DisputeWinner.BUYER
+                ? "Your dispute was resolved in your favor."
+                : "Your dispute was resolved in favor of the seller.";
+        createAndPublish(
+                order.getBuyerId(),
+                ORDER_DISPUTE_RESOLVED,
+                "Dispute resolved",
+                buyerMessage,
+                sourceEventId(order, ORDER_DISPUTE_RESOLVED + ":buyer")
+        );
+        return createAndPublish(
+                order.getSellerId(),
+                ORDER_DISPUTE_RESOLVED,
+                "Dispute resolved",
+                "Dispute for order " + order.getId() + " has been resolved.",
+                sourceEventId(order, ORDER_DISPUTE_RESOLVED + ":seller")
         );
     }
 
@@ -177,7 +211,9 @@ public class NotificationService {
         return eventId + ":" + type;
     }
 
-    private String formatCents(BigDecimal amountCents) {
-        return "$" + amountCents.movePointLeft(2).toPlainString();
+    static String formatIdrFromCents(long amountCents) {
+        long major = amountCents / 100;
+        long minor = Math.abs(amountCents % 100);
+        return String.format("IDR %d.%02d", major, minor);
     }
 }

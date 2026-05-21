@@ -62,6 +62,28 @@ public class BidmartOrder {
     @Column(nullable = false)
     private Instant updatedAt;
 
+    @Column
+    private String disputeReason;
+
+    @Column
+    private String disputeDetails;
+
+    @Column
+    private String sellerDisputeResponse;
+
+    @Enumerated(EnumType.STRING)
+    @Column
+    private DisputeWinner disputeWinner;
+
+    @Column
+    private Instant disputeOpenedAt;
+
+    @Column
+    private Instant disputeResolvedAt;
+
+    @Column
+    private String disputeResolvedBy;
+
     @Version
     private long version;
 
@@ -123,6 +145,39 @@ public class BidmartOrder {
         }
         this.status = OrderStatus.CONFIRMED;
         this.confirmedAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
+    public void openDispute(String reason, String details) {
+        if (this.status != OrderStatus.SHIPPED && this.status != OrderStatus.DELIVERED) {
+            throw new IllegalArgumentException("Disputes can only be opened for shipped orders");
+        }
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("Dispute reason is required");
+        }
+        this.status = OrderStatus.DISPUTED;
+        this.disputeReason = reason.trim();
+        this.disputeDetails = details == null ? null : details.trim();
+        this.disputeOpenedAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
+    public void resolveDispute(DisputeWinner winner, String resolvedBy) {
+        if (this.status != OrderStatus.DISPUTED) {
+            throw new IllegalArgumentException("Order is not in dispute");
+        }
+        if (winner == null) {
+            throw new IllegalArgumentException("Dispute winner is required");
+        }
+        this.disputeWinner = winner;
+        this.disputeResolvedAt = Instant.now();
+        this.disputeResolvedBy = resolvedBy;
+        if (winner == DisputeWinner.BUYER) {
+            this.status = OrderStatus.REFUNDED;
+        } else {
+            this.status = OrderStatus.CONFIRMED;
+            this.confirmedAt = Instant.now();
+        }
         this.updatedAt = Instant.now();
     }
 
@@ -189,5 +244,33 @@ public class BidmartOrder {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getDisputeReason() {
+        return disputeReason;
+    }
+
+    public String getDisputeDetails() {
+        return disputeDetails;
+    }
+
+    public String getSellerDisputeResponse() {
+        return sellerDisputeResponse;
+    }
+
+    public DisputeWinner getDisputeWinner() {
+        return disputeWinner;
+    }
+
+    public Instant getDisputeOpenedAt() {
+        return disputeOpenedAt;
+    }
+
+    public Instant getDisputeResolvedAt() {
+        return disputeResolvedAt;
+    }
+
+    public String getDisputeResolvedBy() {
+        return disputeResolvedBy;
     }
 }

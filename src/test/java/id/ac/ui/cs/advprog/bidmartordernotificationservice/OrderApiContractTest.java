@@ -284,6 +284,37 @@ class OrderApiContractTest {
     }
 
     @Test
+    void buyerCanOpenDisputeOnShippedOrder() throws Exception {
+        String location = createOrder("auction-dispute-api", "seller-dispute", "buyer-dispute");
+
+        mockMvc.perform(put(location + "/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-User-Id", "seller-dispute")
+                        .content("""
+                                {"status":"PACKED","carrier":"JNE"}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put(location + "/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-User-Id", "seller-dispute")
+                        .content("""
+                                {"status":"SHIPPED","trackingNumber":"DISPUTE-TRK","carrier":"JNE"}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post(location + "/dispute")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-User-Id", "buyer-dispute")
+                        .content("""
+                                {"reason":"Never received","details":"No delivery after 14 days"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DISPUTED"))
+                .andExpect(jsonPath("$.disputeReason").value("Never received"));
+    }
+
+    @Test
     void rejectsWrongActorForSellerAndBuyerActions() throws Exception {
         String location = createOrder("auction-4", "seller-4", "buyer-4");
 

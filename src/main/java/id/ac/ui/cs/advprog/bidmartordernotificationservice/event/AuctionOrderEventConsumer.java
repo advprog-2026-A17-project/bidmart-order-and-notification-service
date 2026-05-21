@@ -84,7 +84,7 @@ public class AuctionOrderEventConsumer {
         if (bidderId.isBlank() || auctionId.isBlank()) {
             return;
         }
-        notificationService.notifyBidPlaced(bidderId, auctionId, amount(payload), eventId);
+        notificationService.notifyBidPlaced(bidderId, auctionId, amountCents(payload), eventId);
     }
 
     private void handleOutbid(String eventId, JsonNode payload) {
@@ -94,7 +94,7 @@ public class AuctionOrderEventConsumer {
         if (previousBidderId.isBlank() || auctionId.isBlank()) {
             return;
         }
-        notificationService.notifyOutbid(previousBidderId, auctionId, amount(payload), eventId);
+        notificationService.notifyOutbid(previousBidderId, auctionId, amountCents(payload), eventId);
     }
 
     private void handleAuctionEnded(String eventId, JsonNode payload) {
@@ -152,21 +152,25 @@ public class AuctionOrderEventConsumer {
         return eventType;
     }
 
-    private BigDecimal amount(JsonNode payload) {
+    private long amountCents(JsonNode payload) {
         JsonNode amount = payload.hasNonNull("amountCents")
                 ? payload.path("amountCents")
                 : payload.path("currentPrice");
-        return decimalFromCents(amount);
+        return centsFromNode(amount);
     }
 
-    private BigDecimal decimalFromCents(JsonNode node) {
+    private long centsFromNode(JsonNode node) {
         if (node.isNumber()) {
-            return BigDecimal.valueOf(node.asLong()).movePointLeft(2);
+            return node.asLong();
         }
         String raw = node.asText("0").trim();
         if (raw.isEmpty()) {
-            return BigDecimal.ZERO;
+            return 0L;
         }
-        return new BigDecimal(raw).movePointLeft(2);
+        return new BigDecimal(raw).longValue();
+    }
+
+    private BigDecimal decimalFromCents(JsonNode node) {
+        return BigDecimal.valueOf(centsFromNode(node)).movePointLeft(2);
     }
 }

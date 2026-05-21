@@ -2,7 +2,9 @@ package id.ac.ui.cs.advprog.bidmartordernotificationservice.controller;
 
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.AuctionWonEventRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.CreateOrderRequest;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.OpenDisputeRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.OrderResponse;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.ResolveDisputeRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.UpdateOrderStatusRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.exception.ForbiddenOrderActionException;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.BidmartOrder;
@@ -96,6 +98,28 @@ public class OrderController {
         BidmartOrder order = orderService.getOrder(orderId);
         orderAccessPolicy.requireBuyer(order, userId);
         return ResponseEntity.ok(OrderResponse.from(orderService.confirmReceipt(orderId)));
+    }
+
+    @PostMapping("/{orderId}/dispute")
+    public ResponseEntity<OrderResponse> openDispute(
+            @RequestHeader("X-User-Id") String userId,
+            @PathVariable String orderId,
+            @RequestBody OpenDisputeRequest request
+    ) {
+        BidmartOrder order = orderService.getOrder(orderId);
+        orderAccessPolicy.requireBuyer(order, userId);
+        return ResponseEntity.ok(OrderResponse.from(orderService.openDispute(orderId, request)));
+    }
+
+    @PostMapping("/{orderId}/dispute/resolve")
+    public ResponseEntity<OrderResponse> resolveDispute(
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader(value = "X-User-Roles", required = false) String rolesHeader,
+            @PathVariable String orderId,
+            @RequestBody ResolveDisputeRequest request
+    ) {
+        orderAccessPolicy.requireAdmin(rolesHeader);
+        return ResponseEntity.ok(OrderResponse.from(orderService.resolveDispute(orderId, request, userId)));
     }
 
     @PostMapping("/events/auction-won")

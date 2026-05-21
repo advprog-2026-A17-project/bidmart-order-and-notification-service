@@ -74,5 +74,24 @@ class BidmartOrderTest {
         BidmartOrder order = newOrder();
         assertThrows(IllegalArgumentException.class, order::confirmReceipt);
     }
+
+    @Test
+    void openDisputeShouldRequireShippedStatus() {
+        BidmartOrder order = newOrder();
+        assertThrows(IllegalArgumentException.class, () -> order.openDispute("Missing package", "Details"));
+    }
+
+    @Test
+    void openDisputeShouldMoveOrderToDisputed() {
+        BidmartOrder order = newOrder();
+        order.updateShipping(OrderStatus.PACKED, "TRK", "JNE");
+        order.updateShipping(OrderStatus.SHIPPED, "TRK", "JNE");
+
+        order.openDispute("Never received", "Still waiting");
+
+        assertEquals(OrderStatus.DISPUTED, order.getStatus());
+        assertEquals("Never received", order.getDisputeReason());
+        assertNotNull(order.getDisputeOpenedAt());
+    }
 }
 

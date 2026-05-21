@@ -33,4 +33,15 @@ public class WalletClient {
         HttpEntity<WalletPayoutRequest> entity = new HttpEntity<>(request, headers);
         restTemplate.postForEntity(baseUrl + "/api/v1/wallet/payout", entity, String.class);
     }
+
+    public void refundBuyer(String buyerId, long amountCents) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("x-internal-service-token", internalToken);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        restTemplate.postForEntity(
+                baseUrl + "/api/v1/wallet/" + buyerId + "/top-up?amount=" + amountCents + "&role=BUYER",
+                entity,
+                String.class
+        );
+    }
 }

@@ -1,10 +1,14 @@
 package id.ac.ui.cs.advprog.bidmartordernotificationservice.service;
 
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.client.WalletClient;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.AuctionWonEventRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.CreateOrderRequest;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.OpenDisputeRequest;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.ResolveDisputeRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.UpdateOrderStatusRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.exception.OrderNotFoundException;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.BidmartOrder;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.DisputeWinner;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.OrderStatus;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.repository.OrderRepository;
 import org.junit.jupiter.api.Test;
@@ -35,6 +39,9 @@ class OrderServiceTest {
 
     @Mock
     private NotificationService notificationService;
+
+    @Mock
+    private WalletClient walletClient;
 
     @InjectMocks
     private OrderService orderService;
@@ -190,5 +197,59 @@ class OrderServiceTest {
         List<BidmartOrder> orders = orderService.listOrdersForUser("buyer-6");
 
         assertEquals(1, orders.size());
+    }
+
+    @Test
+    void openDisputeShouldMarkOrderDisputedAndNotifySeller() {
+        BidmartOrder order = BidmartOrder.create(
+                "auction-dispute",
+                "listing-dispute",
+                "seller-1",
+                "buyer-1",
+                new BigDecimal("150"),
+                "Address",
+                null
+        );
+        order.updateShipping(OrderStatus.PACKED, "TRK", "JNE");
+        order.updateShipping(OrderStatus.SHIPPED, "TRK", "JNE");
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(BidmartOrder.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        BidmartOrder disputed = orderService.openDispute(
+                order.getId(),
+                new OpenDisputeRequest("Never received", "No delivery")
+        );
+
+        assertEquals(OrderStatus.DISPUTED, disputed.getStatus());
+        assertEquals("Never received", disputed.getDisputeReason());
+        verify(notificationService).notifyOrderDisputed(disputed);
+    }
+
+    @Test
+    void resolveDisputeShouldRefundBuyerWhenBuyerWins() {
+        BidmartOrder order = BidmartOrder.create(
+                "auction-resolve",
+                "listing-resolve",
+                "seller-2",
+                "buyer-2",
+                new BigDecimal("200"),
+                "Address",
+                null
+        );
+        order.updateShipping(OrderStatus.PACKED, "TRK", "JNE");
+        order.updateShipping(OrderStatus.SHIPPED, "TRK", "JNE");
+        order.openDispute("Damaged item", "Box empty");
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(BidmartOrder.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        BidmartOrder resolved = orderService.resolveDispute(
+                order.getId(),
+                new ResolveDisputeRequest(DisputeWinner.BUYER),
+                "admin-1"
+        );
+
+        assertEquals(OrderStatus.REFUNDED, resolved.getStatus());
+        verify(walletClient).refundBuyer("buyer-2", 20000L);
+        verify(notificationService).notifyDisputeResolved(resolved);
     }
 }
