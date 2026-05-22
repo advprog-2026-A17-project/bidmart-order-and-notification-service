@@ -83,10 +83,11 @@ public class OrderController {
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderResponse> getOrder(
             @RequestHeader("X-User-Id") String userId,
+            @RequestHeader(value = "X-User-Roles", required = false) String rolesHeader,
             @PathVariable String orderId
     ) {
         BidmartOrder order = orderService.getOrder(orderId);
-        orderAccessPolicy.requireParticipant(order, userId);
+        orderAccessPolicy.requireParticipantOrAdmin(order, userId, rolesHeader);
         return ResponseEntity.ok(OrderResponse.from(order));
     }
 

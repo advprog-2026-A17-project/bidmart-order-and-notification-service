@@ -45,6 +45,40 @@ class OrderAccessPolicyTest {
     }
 
     @Test
+    void requireParticipantOrAdminAllowsAdminEvenWhenNotParticipant() {
+        BidmartOrder order = BidmartOrder.create(
+                "auction-admin",
+                "listing-admin",
+                "seller-admin",
+                "buyer-admin",
+                new BigDecimal("200"),
+                "Address",
+                null
+        );
+
+        assertDoesNotThrow(() -> policy.requireParticipantOrAdmin(order, "admin-1", "ADMIN"));
+        assertDoesNotThrow(() -> policy.requireParticipantOrAdmin(order, "admin-1", "BUYER, ADMIN"));
+    }
+
+    @Test
+    void requireParticipantOrAdminRejectsOutsiderWithoutAdminRole() {
+        BidmartOrder order = BidmartOrder.create(
+                "auction-outsider",
+                "listing-outsider",
+                "seller-outsider",
+                "buyer-outsider",
+                new BigDecimal("200"),
+                "Address",
+                null
+        );
+
+        assertThrows(
+                ForbiddenOrderActionException.class,
+                () -> policy.requireParticipantOrAdmin(order, "stranger", "BUYER")
+        );
+    }
+
+    @Test
     void requireSellerRejectsBuyer() {
         assertThrows(ForbiddenOrderActionException.class, () -> policy.requireSeller("buyer-3", "seller-3"));
     }

@@ -25,16 +25,29 @@ public class OrderAccessPolicy {
         }
     }
 
+    public void requireParticipantOrAdmin(BidmartOrder order, String userId, String rolesHeader) {
+        if (isAdmin(rolesHeader) || userId.equals(order.getSellerId()) || userId.equals(order.getBuyerId())) {
+            return;
+        }
+        throw new ForbiddenOrderActionException("Only seller, buyer, or administrator can view this order");
+    }
+
     public void requireAdmin(String rolesHeader) {
-        if (rolesHeader == null || rolesHeader.isBlank()) {
+        if (!isAdmin(rolesHeader)) {
             throw new ForbiddenOrderActionException("Administrator role is required");
+        }
+    }
+
+    private boolean isAdmin(String rolesHeader) {
+        if (rolesHeader == null || rolesHeader.isBlank()) {
+            return false;
         }
         for (String role : rolesHeader.split(",")) {
             if ("ADMIN".equalsIgnoreCase(role.trim())) {
-                return;
+                return true;
             }
         }
-        throw new ForbiddenOrderActionException("Administrator role is required");
+        return false;
     }
 
     private void requireActor(String actualUserId, String requiredUserId, String message) {

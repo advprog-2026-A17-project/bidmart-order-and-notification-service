@@ -38,13 +38,13 @@ class OrderServiceTest {
     private OrderRepository orderRepository;
 
     @Mock
-    private NotificationService notificationService;
+    private NotificationServiceImpl notificationService;
 
     @Mock
     private WalletClient walletClient;
 
     @InjectMocks
-    private OrderService orderService;
+    private OrderServiceImpl orderService;
 
     @Test
     void createOrderReturnsExistingOrderForSameAuction() {

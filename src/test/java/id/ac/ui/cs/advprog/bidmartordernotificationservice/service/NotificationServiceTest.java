@@ -46,7 +46,7 @@ class NotificationServiceTest {
     private ExternalNotificationDispatcher externalNotificationDispatcher;
 
     @InjectMocks
-    private NotificationService notificationService;
+    private NotificationServiceImpl notificationService;
 
     @BeforeEach
     void stubPreferences() {

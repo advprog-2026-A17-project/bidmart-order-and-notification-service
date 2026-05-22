@@ -29,7 +29,7 @@ class AuthClientTest {
     void setUp() {
         restTemplate = new RestTemplate();
         server = MockRestServiceServer.createServer(restTemplate);
-        authClient = new AuthClient(restTemplate, "http://auth.test", "test-internal-token");
+        authClient = new RestAuthClient(restTemplate, "http://auth.test", "test-internal-token");
     }
 
     @AfterEach

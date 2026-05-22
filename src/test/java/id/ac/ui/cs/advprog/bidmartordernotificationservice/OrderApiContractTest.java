@@ -7,9 +7,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.hasItem;
@@ -36,10 +36,10 @@ class OrderApiContractTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private SimpMessagingTemplate messagingTemplate;
 
-    @MockBean
+    @MockitoBean
     private WalletClient walletClient;
 
     @Test
@@ -74,6 +74,19 @@ class OrderApiContractTest {
                 .andExpect(jsonPath("$.auctionId").value("auction-1"))
                 .andExpect(jsonPath("$.shippingStatus").value("PENDING"))
                 .andExpect(jsonPath("$.shippingAddress").value("Depok, Jawa Barat"));
+    }
+
+    @Test
+    void adminCanReadOrderDetailWithoutBeingBuyerOrSeller() throws Exception {
+        String location = createOrder("auction-admin-read", "seller-admin-read", "buyer-admin-read");
+
+        mockMvc.perform(get(location)
+                        .header("X-User-Id", "admin-user")
+                        .header("X-User-Roles", "ADMIN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.auctionId").value("auction-admin-read"))
+                .andExpect(jsonPath("$.sellerId").value("seller-admin-read"))
+                .andExpect(jsonPath("$.buyerId").value("buyer-admin-read"));
     }
 
     @Test

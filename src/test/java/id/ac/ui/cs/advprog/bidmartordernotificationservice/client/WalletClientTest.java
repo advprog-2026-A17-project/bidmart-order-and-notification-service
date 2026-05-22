@@ -24,7 +24,7 @@ class WalletClientTest {
     void setUp() {
         restTemplate = new RestTemplate();
         server = MockRestServiceServer.createServer(restTemplate);
-        walletClient = new WalletClient(restTemplate, "http://wallet.test", "wallet-internal-token");
+        walletClient = new RestWalletClient(restTemplate, "http://wallet.test", "wallet-internal-token");
     }
 
     @AfterEach
@@ -60,7 +60,7 @@ class WalletClientTest {
 
     @Test
     void creditSellerEscrowDoesNotDuplicateWalletApiPath() {
-        walletClient = new WalletClient(
+        walletClient = new RestWalletClient(
                 restTemplate,
                 "http://wallet.test/api/v1/wallet/",
                 "wallet-internal-token"
