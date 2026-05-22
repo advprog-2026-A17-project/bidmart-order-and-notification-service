@@ -15,4 +15,6 @@ public interface NotificationRepository extends JpaRepository<BidmartNotificatio
             String type,
             String sourceEventId
     );
+
+    Optional<BidmartNotification> findByIdAndUserId(String id, String userId);
 }

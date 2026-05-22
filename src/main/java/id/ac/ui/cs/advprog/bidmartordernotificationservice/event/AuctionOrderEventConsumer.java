@@ -3,9 +3,11 @@ package id.ac.ui.cs.advprog.bidmartordernotificationservice.event;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.client.AuthClient;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.AuctionWonEventRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.AuctionRealtimeService;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.NotificationService;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.metrics.BidmartOrderMetrics;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.service.OrderService;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
@@ -27,22 +29,29 @@ public class AuctionOrderEventConsumer {
     private final OrderService orderService;
     private final NotificationService notificationService;
     private final AuctionRealtimeService auctionRealtimeService;
+    private final AuthClient authClient;
+    private final BidmartOrderMetrics orderMetrics;
     private final Set<String> processedEventIds = ConcurrentHashMap.newKeySet();
 
     public AuctionOrderEventConsumer(
             ObjectMapper objectMapper,
             OrderService orderService,
             NotificationService notificationService,
-            AuctionRealtimeService auctionRealtimeService
+            AuctionRealtimeService auctionRealtimeService,
+            AuthClient authClient,
+            BidmartOrderMetrics orderMetrics
     ) {
         this.objectMapper = objectMapper;
         this.orderService = orderService;
         this.notificationService = notificationService;
         this.auctionRealtimeService = auctionRealtimeService;
+        this.authClient = authClient;
+        this.orderMetrics = orderMetrics;
     }
 
     @RabbitListener(queues = "${bidmart.rabbitmq.order.auction-events-queue:order-notification.auction-events}")
     public void consume(String message) throws JsonProcessingException {
+        orderMetrics.recordRabbitConsumed();
         JsonNode envelope = objectMapper.readTree(message);
         String eventId = envelope.path("eventId").asText("");
         if (!eventId.isBlank() && !processedEventIds.add(eventId)) {
@@ -75,7 +84,7 @@ public class AuctionOrderEventConsumer {
         if (bidderId.isBlank() || auctionId.isBlank()) {
             return;
         }
-        notificationService.notifyBidPlaced(bidderId, auctionId, amount(payload), eventId);
+        notificationService.notifyBidPlaced(bidderId, auctionId, amountCents(payload), eventId);
     }
 
     private void handleOutbid(String eventId, JsonNode payload) {
@@ -85,32 +94,59 @@ public class AuctionOrderEventConsumer {
         if (previousBidderId.isBlank() || auctionId.isBlank()) {
             return;
         }
-        notificationService.notifyOutbid(previousBidderId, auctionId, amount(payload), eventId);
+        notificationService.notifyOutbid(previousBidderId, auctionId, amountCents(payload), eventId);
     }
 
     private void handleAuctionEnded(String eventId, JsonNode payload) {
         String auctionId = payload.path("auctionId").asText("");
         String sellerId = payload.path("sellerId").asText("");
+        String status = payload.path("status").asText("");
         String winnerId = payload.path("winnerId").asText("");
-        boolean sold = !winnerId.isBlank();
+        boolean sold = "WON".equalsIgnoreCase(status)
+                || (status.isBlank() && !winnerId.isBlank());
         auctionRealtimeService.publishAuctionEvent(AUCTION_ENDED_V1, payload);
-        if (!sellerId.isBlank()) {
-            notificationService.notifyAuctionEnded(sellerId, auctionId, sold, eventId);
-        }
-        if (!sold) {
-            return;
+
+        if (sold) {
+            String shippingAddress = resolveShippingAddress(payload, winnerId);
+            orderService.createOrderFromAuctionWon(new AuctionWonEventRequest(
+                    eventId,
+                    auctionId,
+                    payload.path("listingId").asText(""),
+                    sellerId,
+                    winnerId,
+                    decimalFromCents(payload.path("finalPrice")),
+                    shippingAddress
+            ));
+            orderMetrics.recordOrderCreated();
         }
 
-        notificationService.notifyAuctionWon(winnerId, auctionId, eventId);
-        orderService.createOrderFromAuctionWon(new AuctionWonEventRequest(
-                eventId,
-                auctionId,
-                payload.path("listingId").asText(""),
-                sellerId,
-                winnerId,
-                decimal(payload.path("finalPrice")),
-                payload.path("shippingAddress").asText(DEFAULT_SHIPPING_ADDRESS)
-        ));
+        try {
+            if (!sellerId.isBlank()) {
+                notificationService.notifyAuctionEnded(sellerId, auctionId, sold, eventId);
+            }
+            if (sold) {
+                notificationService.notifyAuctionWon(winnerId, auctionId, eventId);
+                orderMetrics.recordNotificationSent();
+            }
+        } catch (RuntimeException notificationError) {
+            // Order creation must not be rolled back when optional email/push channels fail.
+        }
+    }
+
+    private String resolveShippingAddress(JsonNode payload, String winnerId) {
+        // Try to get shipping address from event payload first (for manual order creation)
+        String fromPayload = payload.path("shippingAddress").asText("");
+        if (!fromPayload.isBlank() && !DEFAULT_SHIPPING_ADDRESS.equals(fromPayload)) {
+            return fromPayload;
+        }
+        // Fetch buyer's shipping address from auth service profile
+        if (winnerId != null && !winnerId.isBlank()) {
+            String fromProfile = authClient.fetchShippingAddress(winnerId);
+            if (fromProfile != null && !fromProfile.isBlank()) {
+                return fromProfile;
+            }
+        }
+        return DEFAULT_SHIPPING_ADDRESS;
     }
 
     private String normalizeEventType(JsonNode envelope) {
@@ -122,17 +158,25 @@ public class AuctionOrderEventConsumer {
         return eventType;
     }
 
-    private BigDecimal amount(JsonNode payload) {
+    private long amountCents(JsonNode payload) {
         JsonNode amount = payload.hasNonNull("amountCents")
                 ? payload.path("amountCents")
                 : payload.path("currentPrice");
-        return decimal(amount);
+        return centsFromNode(amount);
     }
 
-    private BigDecimal decimal(JsonNode node) {
+    private long centsFromNode(JsonNode node) {
         if (node.isNumber()) {
-            return node.decimalValue();
+            return node.asLong();
         }
-        return new BigDecimal(node.asText("0"));
+        String raw = node.asText("0").trim();
+        if (raw.isEmpty()) {
+            return 0L;
+        }
+        return new BigDecimal(raw).longValue();
+    }
+
+    private BigDecimal decimalFromCents(JsonNode node) {
+        return BigDecimal.valueOf(centsFromNode(node)).movePointLeft(2);
     }
 }

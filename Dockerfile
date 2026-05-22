@@ -6,8 +6,7 @@ COPY settings.gradle.kts settings.gradle.kts
 COPY build.gradle.kts build.gradle.kts
 COPY src src
 
-RUN --mount=type=cache,id=gradle-order,target=/home/gradle/.gradle \
-    gradle clean bootJar --no-daemon
+RUN gradle clean bootJar --no-daemon
 
 FROM eclipse-temurin:21-jre-alpine
 
