@@ -44,4 +44,17 @@ class WalletClientTest {
 
         walletClient.payoutSeller("seller-1", 125L, "order-1");
     }
+
+    @Test
+    void creditSellerEscrowPostsAmountAndAuctionCorrelation() {
+        server.expect(requestTo("http://wallet.test/api/v1/wallet/seller-escrow"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("x-internal-service-token", "wallet-internal-token"))
+                .andExpect(content().json("""
+                        {"sellerId":"seller-1","amount":125,"correlationId":"auction-1"}
+                        """))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        walletClient.creditSellerEscrow("seller-1", 125L, "auction-1");
+    }
 }

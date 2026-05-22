@@ -54,9 +54,10 @@ jobs:
           EVENT_TYPE: deploy-vps-${{ steps.resolve.outputs.target }}
           DEPLOY_BRANCH: ${{ steps.resolve.outputs.branch }}
         run: |
+          # Keep CI green when deployment dispatch credentials are not configured.
           if [ -z "$GH_TOKEN" ]; then
-            echo "::error::VPS_DEPLOY_DISPATCH_TOKEN is not configured."
-            exit 1
+            echo "::warning::VPS_DEPLOY_DISPATCH_TOKEN is not configured; skipping VPS deploy dispatch."
+            exit 0
           fi
           gh api repos/advprog-2026-A17-project/bidmart-infrastructure/dispatches \
             -f event_type="$EVENT_TYPE" \

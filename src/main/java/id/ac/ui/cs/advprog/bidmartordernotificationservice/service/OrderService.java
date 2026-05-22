@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 @Service
@@ -109,6 +110,11 @@ public class OrderService {
     public BidmartOrder confirmReceipt(String orderId) {
         BidmartOrder order = getOrder(orderId);
         order.confirmReceipt();
+        walletClient.creditSellerEscrow(
+                order.getSellerId(),
+                toSellerEscrowRupiah(order.getFinalPrice()),
+                order.getAuctionId()
+        );
         return order;
     }
 
@@ -142,5 +148,12 @@ public class OrderService {
             return 0L;
         }
         return amount.setScale(0, java.math.RoundingMode.UNNECESSARY).longValueExact();
+    }
+
+    private long toSellerEscrowRupiah(BigDecimal amount) {
+        if (amount == null) {
+            return 0L;
+        }
+        return amount.setScale(0, RoundingMode.CEILING).longValueExact();
     }
 }

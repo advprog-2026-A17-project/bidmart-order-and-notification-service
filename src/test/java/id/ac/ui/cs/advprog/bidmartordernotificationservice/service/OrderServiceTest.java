@@ -174,6 +174,27 @@ class OrderServiceTest {
     }
 
     @Test
+    void confirmReceiptCreditsSellerEscrowBeforePayoutDelay() {
+        BidmartOrder order = BidmartOrder.create(
+                "auction-6",
+                "listing-6",
+                "seller-6",
+                "buyer-6",
+                new BigDecimal("5000"),
+                "Address",
+                null
+        );
+        order.updateShipping(OrderStatus.PACKED, "TRK-PACKED", "JNE");
+        order.updateShipping(OrderStatus.SHIPPED, "TRK-SHIPPED", "JNE");
+        when(orderRepository.findById(order.getId())).thenReturn(Optional.of(order));
+
+        BidmartOrder confirmed = orderService.confirmReceipt(order.getId());
+
+        assertEquals(OrderStatus.CONFIRMED, confirmed.getStatus());
+        verify(walletClient).creditSellerEscrow("seller-6", 5000L, "auction-6");
+    }
+
+    @Test
     void getOrderThrowsWhenMissing() {
         when(orderRepository.findById("missing")).thenReturn(Optional.empty());
 

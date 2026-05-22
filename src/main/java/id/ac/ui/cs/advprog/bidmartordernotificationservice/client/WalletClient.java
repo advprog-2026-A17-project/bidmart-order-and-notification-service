@@ -34,6 +34,16 @@ public class WalletClient {
         restTemplate.postForEntity(baseUrl + "/api/v1/wallet/payout", entity, String.class);
     }
 
+    public void creditSellerEscrow(String sellerId, long amount, String auctionId) {
+        WalletSellerEscrowRequest request = new WalletSellerEscrowRequest(sellerId, amount, auctionId);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.add("x-internal-service-token", internalToken);
+
+        HttpEntity<WalletSellerEscrowRequest> entity = new HttpEntity<>(request, headers);
+        restTemplate.postForEntity(baseUrl + "/api/v1/wallet/seller-escrow", entity, String.class);
+    }
+
     public void refundBuyer(String buyerId, long amount) {
         HttpHeaders headers = new HttpHeaders();
         headers.add("x-internal-service-token", internalToken);

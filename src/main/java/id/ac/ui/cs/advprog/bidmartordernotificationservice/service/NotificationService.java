@@ -23,6 +23,7 @@ public class NotificationService {
     private static final String USER_DISABLED = "USER_DISABLED";
     private static final String ORDER_DISPUTED = "ORDER_DISPUTED";
     private static final String ORDER_DISPUTE_RESOLVED = "ORDER_DISPUTE_RESOLVED";
+    private static final String WALLET_PAYOUT_RELEASED = "WALLET_PAYOUT_RELEASED";
 
     private final NotificationRepository notificationRepository;
     private final SimpMessagingTemplate messagingTemplate;
@@ -151,6 +152,17 @@ public class NotificationService {
                 "Dispute resolved",
                 "Dispute for order " + order.getId() + " has been resolved.",
                 sourceEventId(order, ORDER_DISPUTE_RESOLVED + ":seller")
+        );
+    }
+
+    @Transactional
+    public NotificationResponse notifySellerPayoutReleased(BidmartOrder order, long amount) {
+        return createAndPublish(
+                order.getSellerId(),
+                WALLET_PAYOUT_RELEASED,
+                "Payout released",
+                "Payout for order " + order.getId() + " has been released to your active balance.",
+                sourceEventId(order, WALLET_PAYOUT_RELEASED)
         );
     }
 

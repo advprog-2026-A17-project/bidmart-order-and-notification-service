@@ -10,9 +10,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClientException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -25,15 +25,18 @@ public class OrderPayoutScheduler {
 
     private final OrderRepository orderRepository;
     private final WalletClient walletClient;
+    private final NotificationService notificationService;
     private final Duration payoutDelay;
 
     public OrderPayoutScheduler(
             OrderRepository orderRepository,
             WalletClient walletClient,
+            NotificationService notificationService,
             @Value("${bidmart.order.payout-delay-minutes:5}") long payoutDelayMinutes
     ) {
         this.orderRepository = orderRepository;
         this.walletClient = walletClient;
+        this.notificationService = notificationService;
         this.payoutDelay = Duration.ofMinutes(Math.max(0, Math.min(payoutDelayMinutes, MAX_PAYOUT_DELAY_MINUTES)));
     }
 
@@ -45,13 +48,22 @@ public class OrderPayoutScheduler {
                 .findByStatusAndPayoutReleasedAtIsNullAndConfirmedAtBefore(OrderStatus.CONFIRMED, cutoff);
 
         for (BidmartOrder order : eligibleOrders) {
-            long amount = toRupiah(order.getFinalPrice());
             try {
+                long amount = toRupiah(order.getFinalPrice());
                 walletClient.payoutSeller(order.getSellerId(), amount, order.getId());
                 order.markPayoutReleased();
-            } catch (RestClientException ex) {
+                notifySellerPayoutReleased(order, amount);
+            } catch (RuntimeException ex) {
                 logger.warn("Failed to release payout for order {}: {}", order.getId(), ex.getMessage());
             }
+        }
+    }
+
+    private void notifySellerPayoutReleased(BidmartOrder order, long amount) {
+        try {
+            notificationService.notifySellerPayoutReleased(order, amount);
+        } catch (RuntimeException notificationError) {
+            logger.warn("Failed to notify seller payout for order {}: {}", order.getId(), notificationError.getMessage());
         }
     }
 
@@ -59,6 +71,6 @@ public class OrderPayoutScheduler {
         if (amount == null) {
             return 0L;
         }
-        return amount.setScale(0, java.math.RoundingMode.UNNECESSARY).longValueExact();
+        return amount.setScale(0, RoundingMode.CEILING).longValueExact();
     }
 }

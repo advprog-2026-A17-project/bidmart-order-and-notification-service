@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.bidmartordernotificationservice;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.client.WalletClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -37,6 +38,9 @@ class OrderApiContractTest {
 
     @MockBean
     private SimpMessagingTemplate messagingTemplate;
+
+    @MockBean
+    private WalletClient walletClient;
 
     @Test
     void createsAndReadsOrder() throws Exception {
@@ -110,6 +114,8 @@ class OrderApiContractTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMED"))
                 .andExpect(jsonPath("$.shippingStatus").value("CONFIRMED"));
+
+        verify(walletClient).creditSellerEscrow("seller-2", 100000L, "auction-2");
     }
 
     @Test

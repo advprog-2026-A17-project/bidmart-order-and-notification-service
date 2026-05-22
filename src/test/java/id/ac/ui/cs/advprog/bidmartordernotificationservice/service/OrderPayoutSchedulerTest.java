@@ -43,7 +43,8 @@ class OrderPayoutSchedulerTest {
     void releaseConfirmedOrderPayoutsShouldPayoutAndMarkReleased() {
         OrderRepository orderRepository = mock(OrderRepository.class);
         WalletClient walletClient = mock(WalletClient.class);
-        OrderPayoutScheduler scheduler = new OrderPayoutScheduler(orderRepository, walletClient, 5);
+        NotificationService notificationService = mock(NotificationService.class);
+        OrderPayoutScheduler scheduler = new OrderPayoutScheduler(orderRepository, walletClient, notificationService, 5);
 
         BidmartOrder order = confirmedOrder("seller-ok", new BigDecimal("125.00"));
         when(orderRepository.findByStatusAndPayoutReleasedAtIsNullAndConfirmedAtBefore(eq(OrderStatus.CONFIRMED), any(Instant.class)))
@@ -52,6 +53,7 @@ class OrderPayoutSchedulerTest {
         scheduler.releaseConfirmedOrderPayouts();
 
         verify(walletClient).payoutSeller(eq("seller-ok"), eq(125L), eq(order.getId()));
+        verify(notificationService).notifySellerPayoutReleased(eq(order), eq(125L));
         verify(orderRepository).findByStatusAndPayoutReleasedAtIsNullAndConfirmedAtBefore(eq(OrderStatus.CONFIRMED), any(Instant.class));
     }
 
@@ -59,7 +61,8 @@ class OrderPayoutSchedulerTest {
     void releaseConfirmedOrderPayoutsShouldContinueWhenWalletPayoutFails() {
         OrderRepository orderRepository = mock(OrderRepository.class);
         WalletClient walletClient = mock(WalletClient.class);
-        OrderPayoutScheduler scheduler = new OrderPayoutScheduler(orderRepository, walletClient, 5);
+        NotificationService notificationService = mock(NotificationService.class);
+        OrderPayoutScheduler scheduler = new OrderPayoutScheduler(orderRepository, walletClient, notificationService, 5);
 
         BidmartOrder failing = confirmedOrder("seller-fail", new BigDecimal("150.00"));
         BidmartOrder success = confirmedOrder("seller-ok", new BigDecimal("200.00"));
@@ -81,7 +84,8 @@ class OrderPayoutSchedulerTest {
     void releaseConfirmedOrderPayoutsShouldHandleNullAmountAsZero() {
         OrderRepository orderRepository = mock(OrderRepository.class);
         WalletClient walletClient = mock(WalletClient.class);
-        OrderPayoutScheduler scheduler = new OrderPayoutScheduler(orderRepository, walletClient, 5);
+        NotificationService notificationService = mock(NotificationService.class);
+        OrderPayoutScheduler scheduler = new OrderPayoutScheduler(orderRepository, walletClient, notificationService, 5);
 
         BidmartOrder order = confirmedOrder("seller-null", null);
         when(orderRepository.findByStatusAndPayoutReleasedAtIsNullAndConfirmedAtBefore(eq(OrderStatus.CONFIRMED), any(Instant.class)))
@@ -96,7 +100,8 @@ class OrderPayoutSchedulerTest {
     void releaseConfirmedOrderPayoutsMarksOrderReleasedOnSuccess() throws Exception {
         OrderRepository orderRepository = mock(OrderRepository.class);
         WalletClient walletClient = mock(WalletClient.class);
-        OrderPayoutScheduler scheduler = new OrderPayoutScheduler(orderRepository, walletClient, 5);
+        NotificationService notificationService = mock(NotificationService.class);
+        OrderPayoutScheduler scheduler = new OrderPayoutScheduler(orderRepository, walletClient, notificationService, 5);
 
         BidmartOrder order = confirmedOrder("seller-done", new BigDecimal("99.00"));
         Field confirmedAt = BidmartOrder.class.getDeclaredField("confirmedAt");
@@ -113,10 +118,28 @@ class OrderPayoutSchedulerTest {
     }
 
     @Test
+    void releaseConfirmedOrderPayoutsRoundsFractionalRupiahUp() {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        WalletClient walletClient = mock(WalletClient.class);
+        NotificationService notificationService = mock(NotificationService.class);
+        OrderPayoutScheduler scheduler = new OrderPayoutScheduler(orderRepository, walletClient, notificationService, 5);
+
+        BidmartOrder order = confirmedOrder("seller-fractional", new BigDecimal("99.50"));
+        when(orderRepository.findByStatusAndPayoutReleasedAtIsNullAndConfirmedAtBefore(eq(OrderStatus.CONFIRMED), any(Instant.class)))
+                .thenReturn(List.of(order));
+
+        scheduler.releaseConfirmedOrderPayouts();
+
+        verify(walletClient).payoutSeller(eq("seller-fractional"), eq(100L), eq(order.getId()));
+        verify(notificationService).notifySellerPayoutReleased(eq(order), eq(100L));
+    }
+
+    @Test
     void releaseConfirmedOrderPayoutsCapsConfiguredDelayAtFiveMinutes() {
         OrderRepository orderRepository = mock(OrderRepository.class);
         WalletClient walletClient = mock(WalletClient.class);
-        OrderPayoutScheduler scheduler = new OrderPayoutScheduler(orderRepository, walletClient, 60);
+        NotificationService notificationService = mock(NotificationService.class);
+        OrderPayoutScheduler scheduler = new OrderPayoutScheduler(orderRepository, walletClient, notificationService, 60);
 
         when(orderRepository.findByStatusAndPayoutReleasedAtIsNullAndConfirmedAtBefore(eq(OrderStatus.CONFIRMED), any(Instant.class)))
                 .thenReturn(List.of());
