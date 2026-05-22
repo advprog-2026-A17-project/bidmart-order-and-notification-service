@@ -64,7 +64,11 @@ public class OrderService {
                             request.shippingAddress(),
                             request.eventId()
                     ));
-                    notificationService.notifyOrderCreated(order);
+                    try {
+                        notificationService.notifyOrderCreated(order);
+                    } catch (RuntimeException notificationError) {
+                        // Order persistence must succeed even if optional channels fail.
+                    }
                     return new EventOrderCreationResult(order, true);
                 });
     }

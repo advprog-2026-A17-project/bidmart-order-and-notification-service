@@ -105,26 +105,32 @@ public class AuctionOrderEventConsumer {
         boolean sold = "WON".equalsIgnoreCase(status)
                 || (status.isBlank() && !winnerId.isBlank());
         auctionRealtimeService.publishAuctionEvent(AUCTION_ENDED_V1, payload);
-        if (!sellerId.isBlank()) {
-            notificationService.notifyAuctionEnded(sellerId, auctionId, sold, eventId);
-        }
-        if (!sold) {
-            return;
+
+        if (sold) {
+            String shippingAddress = resolveShippingAddress(payload, winnerId);
+            orderService.createOrderFromAuctionWon(new AuctionWonEventRequest(
+                    eventId,
+                    auctionId,
+                    payload.path("listingId").asText(""),
+                    sellerId,
+                    winnerId,
+                    decimalFromCents(payload.path("finalPrice")),
+                    shippingAddress
+            ));
+            orderMetrics.recordOrderCreated();
         }
 
-        notificationService.notifyAuctionWon(winnerId, auctionId, eventId);
-        orderMetrics.recordNotificationSent();
-        String shippingAddress = resolveShippingAddress(payload, winnerId);
-        orderService.createOrderFromAuctionWon(new AuctionWonEventRequest(
-                eventId,
-                auctionId,
-                payload.path("listingId").asText(""),
-                sellerId,
-                winnerId,
-                decimalFromCents(payload.path("finalPrice")),
-                shippingAddress
-        ));
-        orderMetrics.recordOrderCreated();
+        try {
+            if (!sellerId.isBlank()) {
+                notificationService.notifyAuctionEnded(sellerId, auctionId, sold, eventId);
+            }
+            if (sold) {
+                notificationService.notifyAuctionWon(winnerId, auctionId, eventId);
+                orderMetrics.recordNotificationSent();
+            }
+        } catch (RuntimeException notificationError) {
+            // Order creation must not be rolled back when optional email/push channels fail.
+        }
     }
 
     private String resolveShippingAddress(JsonNode payload, String winnerId) {
