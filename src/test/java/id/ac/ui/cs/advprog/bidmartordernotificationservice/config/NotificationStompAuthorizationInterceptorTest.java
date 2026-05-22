@@ -66,6 +66,14 @@ class NotificationStompAuthorizationInterceptorTest {
     }
 
     @Test
+    void shouldAllowAuthenticatedSelfUserQueue() {
+        assertTrue(interceptor.isDestinationAllowed(
+                "buyer-1",
+                "/user/queue/notifications"
+        ));
+    }
+
+    @Test
     void shouldDenyAnotherUsersQueue() {
         assertFalse(interceptor.isDestinationAllowed(
                 "buyer-1",
@@ -162,6 +170,18 @@ class NotificationStompAuthorizationInterceptorTest {
         StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
         accessor.setUser(() -> "buyer-1");
         accessor.setDestination("/topic/notifications/users/buyer-2");
+        Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> interceptor.preSend(message, noopChannel())
+        );
+    }
+
+    @Test
+    void preSendSubscribeShouldRejectAnonymousNotificationTopic() {
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
+        accessor.setDestination("/topic/notifications/users/buyer-1");
         Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
 
         assertThrows(

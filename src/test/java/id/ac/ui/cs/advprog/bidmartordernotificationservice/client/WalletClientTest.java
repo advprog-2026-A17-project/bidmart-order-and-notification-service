@@ -57,4 +57,22 @@ class WalletClientTest {
 
         walletClient.creditSellerEscrow("seller-1", 125L, "auction-1");
     }
+
+    @Test
+    void creditSellerEscrowDoesNotDuplicateWalletApiPath() {
+        walletClient = new WalletClient(
+                restTemplate,
+                "http://wallet.test/api/v1/wallet/",
+                "wallet-internal-token"
+        );
+        server.expect(requestTo("http://wallet.test/api/v1/wallet/seller-escrow"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("x-internal-service-token", "wallet-internal-token"))
+                .andExpect(content().json("""
+                        {"sellerId":"seller-2","amount":250,"correlationId":"auction-2"}
+                        """))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        walletClient.creditSellerEscrow("seller-2", 250L, "auction-2");
+    }
 }

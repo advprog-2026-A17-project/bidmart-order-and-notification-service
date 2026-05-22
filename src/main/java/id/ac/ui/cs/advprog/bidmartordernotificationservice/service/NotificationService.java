@@ -219,6 +219,7 @@ public class NotificationService {
         var preferences = notificationPreferenceService.findOrCreate(userId);
         if (preferences.isInAppEnabled()) {
             messagingTemplate.convertAndSendToUser(userId, "/queue/notifications", response);
+            messagingTemplate.convertAndSend("/topic/notifications/users/" + userId, response);
         }
         if (preferences.isEmailEnabled()) {
             externalNotificationDispatcher.sendEmail(userId, title, message);

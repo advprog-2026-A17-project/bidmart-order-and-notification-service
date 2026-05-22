@@ -71,6 +71,7 @@ class NotificationServiceTest {
         assertEquals("Bid placed", response.title());
         assertEquals("Your bid of IDR 125.00 was placed on auction auction-1.", response.message());
         verify(messagingTemplate).convertAndSendToUser(eq("buyer-1"), eq("/queue/notifications"), any(NotificationResponse.class));
+        verify(messagingTemplate).convertAndSend(eq("/topic/notifications/users/buyer-1"), any(NotificationResponse.class));
     }
 
     @Test

@@ -32,6 +32,7 @@ public class NotificationStompAuthorizationInterceptor implements ChannelInterce
     private static final String TOKEN_TYPE_ACCESS = "access";
     private static final Pattern USER_NOTIFICATION_TOPIC =
             Pattern.compile("^/topic/notifications/users/([^/]+)$");
+    private static final String USER_QUEUE_SELF = "/user/queue/notifications";
     private static final Pattern USER_QUEUE = Pattern.compile("^/user/([^/]+)/queue/notifications$");
 
     private final SecretKey signingKey;
@@ -57,6 +58,9 @@ public class NotificationStompAuthorizationInterceptor implements ChannelInterce
         if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
             Principal principal = accessor.getUser();
             String destination = accessor.getDestination();
+            if (principal == null && destination != null && isPrivateUserDestination(destination)) {
+                throw new IllegalArgumentException("Subscription requires authentication: " + destination);
+            }
             if (principal != null && destination != null && !isDestinationAllowed(principal.getName(), destination)) {
                 throw new IllegalArgumentException("Subscription denied for destination: " + destination);
             }
@@ -101,6 +105,9 @@ public class NotificationStompAuthorizationInterceptor implements ChannelInterce
     }
 
     boolean isDestinationAllowed(String principalUserId, String destination) {
+        if (USER_QUEUE_SELF.equals(destination)) {
+            return true;
+        }
         var userTopic = USER_NOTIFICATION_TOPIC.matcher(destination);
         if (userTopic.matches()) {
             return principalUserId.equals(userTopic.group(1));
@@ -113,6 +120,12 @@ public class NotificationStompAuthorizationInterceptor implements ChannelInterce
         return destination.startsWith("/topic/auctions")
                 || destination.startsWith("/topic/listings/")
                 || destination.startsWith("/topic/sellers/");
+    }
+
+    private boolean isPrivateUserDestination(String destination) {
+        return USER_QUEUE_SELF.equals(destination)
+                || USER_QUEUE.matcher(destination).matches()
+                || USER_NOTIFICATION_TOPIC.matcher(destination).matches();
     }
 
     private record StompUserPrincipal(String userId) implements Principal {

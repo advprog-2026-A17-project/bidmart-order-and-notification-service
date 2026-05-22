@@ -10,6 +10,8 @@ import org.springframework.web.client.RestTemplate;
 @Component
 public class WalletClient {
 
+    private static final String WALLET_API_PATH = "/api/v1/wallet";
+
     private final RestTemplate restTemplate;
     private final String baseUrl;
     private final String internalToken;
@@ -31,7 +33,7 @@ public class WalletClient {
         headers.add("x-internal-service-token", internalToken);
 
         HttpEntity<WalletPayoutRequest> entity = new HttpEntity<>(request, headers);
-        restTemplate.postForEntity(baseUrl + "/api/v1/wallet/payout", entity, String.class);
+        restTemplate.postForEntity(walletUrl("/payout"), entity, String.class);
     }
 
     public void creditSellerEscrow(String sellerId, long amount, String auctionId) {
@@ -41,7 +43,7 @@ public class WalletClient {
         headers.add("x-internal-service-token", internalToken);
 
         HttpEntity<WalletSellerEscrowRequest> entity = new HttpEntity<>(request, headers);
-        restTemplate.postForEntity(baseUrl + "/api/v1/wallet/seller-escrow", entity, String.class);
+        restTemplate.postForEntity(walletUrl("/seller-escrow"), entity, String.class);
     }
 
     public void refundBuyer(String buyerId, long amount) {
@@ -49,9 +51,21 @@ public class WalletClient {
         headers.add("x-internal-service-token", internalToken);
         HttpEntity<Void> entity = new HttpEntity<>(headers);
         restTemplate.postForEntity(
-                baseUrl + "/api/v1/wallet/" + buyerId + "/top-up?amount=" + amount + "&role=BUYER",
+                walletUrl("/" + buyerId + "/top-up?amount=" + amount + "&role=BUYER"),
                 entity,
                 String.class
         );
+    }
+
+    private String walletUrl(String path) {
+        return walletBaseUrl() + path;
+    }
+
+    private String walletBaseUrl() {
+        String normalizedBaseUrl = baseUrl.replaceAll("/+$", "");
+        if (normalizedBaseUrl.endsWith(WALLET_API_PATH)) {
+            return normalizedBaseUrl;
+        }
+        return normalizedBaseUrl + WALLET_API_PATH;
     }
 }
