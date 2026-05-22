@@ -62,10 +62,18 @@ public class WalletClient {
     }
 
     private String walletBaseUrl() {
-        String normalizedBaseUrl = baseUrl.replaceAll("/+$", "");
+        String normalizedBaseUrl = stripTrailingSlashes(baseUrl);
         if (normalizedBaseUrl.endsWith(WALLET_API_PATH)) {
             return normalizedBaseUrl;
         }
         return normalizedBaseUrl + WALLET_API_PATH;
+    }
+
+    private String stripTrailingSlashes(String value) {
+        int end = value.length();
+        while (end > 0 && value.charAt(end - 1) == '/') {
+            end--;
+        }
+        return value.substring(0, end);
     }
 }
