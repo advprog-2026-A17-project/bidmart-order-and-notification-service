@@ -9,7 +9,7 @@ import org.jose4j.lang.JoseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +20,10 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@ConditionalOnProperty(name = "bidmart.notification.push.vapid.private-key")
+@ConditionalOnExpression(
+        "T(org.springframework.util.StringUtils).hasText('${bidmart.notification.push.vapid.private-key:}') " +
+                "&& T(org.springframework.util.StringUtils).hasText('${bidmart.notification.push.vapid.public-key:}')"
+)
 public class WebPushNotificationSender implements PushNotificationSender {
 
     private static final Logger log = LoggerFactory.getLogger(WebPushNotificationSender.class);

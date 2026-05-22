@@ -2,11 +2,11 @@ package id.ac.ui.cs.advprog.bidmartordernotificationservice.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("local")
+@ConditionalOnExpression("!T(org.springframework.util.StringUtils).hasText('${spring.mail.host:}')")
 public class LogNotificationEmailSender implements NotificationEmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(LogNotificationEmailSender.class);

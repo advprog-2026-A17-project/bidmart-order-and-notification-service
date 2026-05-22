@@ -1,8 +1,6 @@
 # BidMart Order and Notification Service
 
-This service implements the extra-mile post-auction order module for BidMart. The assignment treats order and notification as optional for a 4-member team, but this repository takes Strategy B by adding a dedicated service for order creation, shipment tracking, buyer receipt confirmation, and auction-won event handling.
-
-Notification endpoints are intentionally not implemented in this first slice because the current project direction explicitly ignores notification for now. The package name keeps `ordernotificationservice` so notification can be added later without creating another service boundary.
+This service implements the extra-mile post-auction order and notification module for BidMart. The assignment treats order and notification as optional for a 4-member team, but this repository takes Strategy B by adding a dedicated service for order creation, shipment tracking, buyer receipt confirmation, auction-won event handling, stored notifications, notification preferences, web push subscriptions, and STOMP realtime updates.
 
 ## Stack Choice
 
@@ -23,6 +21,13 @@ This service uses Java 21 and Spring Boot because the existing auth, catalogue, 
 - `PUT /api/v1/orders/{orderId}/status`
 - `POST /api/v1/orders/{orderId}/confirm`
 - `POST /api/v1/orders/events/auction-won`
+- `GET /api/v1/notifications`
+- `PATCH /api/v1/notifications/{notificationId}/read`
+- `GET /api/v1/notifications/preferences`
+- `PUT /api/v1/notifications/preferences`
+- `GET /api/v1/notifications/push/vapid-public-key`
+- `POST /api/v1/notifications/push/subscriptions`
+- `GET /ws/notifications`
 
 ## Lifecycle
 
@@ -54,4 +59,4 @@ Run:
 ./gradlew test
 ```
 
-The current contract test covers manual order creation, retrieval, seller shipping updates, buyer confirmation, automatic auction-won order creation, idempotent event replay, and seller or buyer authorization.
+The current contract tests cover manual order creation, retrieval, seller shipping updates, buyer confirmation, automatic auction-won order creation, idempotent event replay, seller or buyer authorization, stored notifications, preferences, push subscription registration, and STOMP subscription authorization.

@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlatformRabbitMqConfigTest {
 
@@ -13,8 +14,8 @@ class PlatformRabbitMqConfigTest {
     void applicationConfigDoesNotForceRabbitMqToLocalhostInCompose() throws Exception {
         String properties = Files.readString(Path.of("src/main/resources/application.properties"));
 
-        assertFalse(properties.contains("spring.rabbitmq.addresses"));
+        assertTrue(properties.contains("SPRING_RABBITMQ_URL"));
+        assertTrue(properties.contains("CLOUDAMQP_URL"));
         assertFalse(properties.contains("localhost:5672"));
-        assertFalse(properties.contains("RABBITMQ_URL"));
     }
 }
