@@ -1,0 +1,102 @@
+name: Deploy Heroku
+
+on:
+  workflow_run:
+    workflows: ["Continuous Integration"]
+    branches: [staging, main]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Heroku environment'
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - prod
+
+concurrency:
+  group: bidmart-order-heroku-${{ github.event.workflow_run.head_branch || github.ref_name || 'manual' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy order service container to Heroku
+    runs-on: ubuntu-latest
+    if: github.repository == 'advprog-2026-A17-project/bidmart-order-and-notification-service' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    environment:
+      name: ${{ steps.resolve.outputs.target }}
+    steps:
+      - name: Resolve target
+        id: resolve
+        env:
+          INPUT_TARGET: ${{ github.event.inputs.target }}
+          WORKFLOW_RUN_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            target="${INPUT_TARGET:-staging}"
+          elif [ "$WORKFLOW_RUN_BRANCH" = "main" ]; then
+            target=prod
+          else
+            target=staging
+          fi
+          if [ "$target" != "prod" ] && [ "$target" != "staging" ]; then
+            target=staging
+          fi
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          if [ "$target" = "prod" ]; then
+            app="${HEROKU_APP_NAME_PROD:-bidmart-order-ced842eeb858}"
+          else
+            app="${HEROKU_APP_NAME_STAGING:-bidmart-order-staging-a5fd01b90144}"
+          fi
+          echo "app_name=$app" >> "$GITHUB_OUTPUT"
+          echo "Deploying order service to Heroku ($target): $app"
+        env:
+          HEROKU_APP_NAME_PROD: ${{ secrets.HEROKU_APP_NAME_PROD }}
+          HEROKU_APP_NAME_STAGING: ${{ secrets.HEROKU_APP_NAME_STAGING }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Install Heroku CLI
+        run: curl https://cli-assets.heroku.com/install.sh | sh
+
+      - name: Log in to Heroku Container Registry
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: heroku container:login
+
+      - name: Build and push container
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: heroku container:push web -a "${{ steps.resolve.outputs.app_name }}"
+
+      - name: Release container
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: heroku container:release web -a "${{ steps.resolve.outputs.app_name }}"
+
+      - name: Smoke test health
+        run: |
+          set -e
+          base_url=$(heroku apps:info -a "${{ steps.resolve.outputs.app_name }}" --json | jq -r '.app.web_url // empty')
+          if [ -z "$base_url" ]; then
+            echo "::warning::Could not resolve Heroku web_url; skipping smoke test."
+            exit 0
+          fi
+          base_url="${base_url%/}"
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -fsS --max-time 20 "${base_url}/actuator/health"; then
+              echo "Order service healthy at ${base_url}"
+              exit 0
+            fi
+            echo "Waiting for order health (attempt $i)"
+            sleep 10
+          done
+          echo "::error::Order service did not become healthy after deploy"
+          exit 1
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
