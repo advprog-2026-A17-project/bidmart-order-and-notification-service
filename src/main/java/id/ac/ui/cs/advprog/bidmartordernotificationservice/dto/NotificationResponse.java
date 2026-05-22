@@ -10,7 +10,10 @@ public record NotificationResponse(
         String type,
         String title,
         String message,
+        String status,
         boolean read,
+        String sourceEventId,
+        Instant readAt,
         Instant createdAt
 ) {
     public static NotificationResponse from(BidmartNotification notification) {
@@ -20,7 +23,10 @@ public record NotificationResponse(
                 notification.getType(),
                 notification.getTitle(),
                 notification.getMessage(),
+                notification.isRead() ? "READ" : "UNREAD",
                 notification.isRead(),
+                notification.getSourceEventId(),
+                notification.getReadAt(),
                 notification.getCreatedAt()
         );
     }

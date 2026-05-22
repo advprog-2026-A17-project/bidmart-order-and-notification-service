@@ -38,6 +38,9 @@ public class BidmartNotification {
     private boolean readFlag;
 
     @Column
+    private Instant readAt;
+
+    @Column
     private String sourceEventId;
 
     @Column(nullable = false)
@@ -86,11 +89,27 @@ public class BidmartNotification {
         return readFlag;
     }
 
+    public Instant getReadAt() {
+        return readAt;
+    }
+
     public String getSourceEventId() {
         return sourceEventId;
     }
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public void markAsRead() {
+        if (!readFlag) {
+            readFlag = true;
+            readAt = Instant.now();
+        }
+    }
+
+    public void markAsUnread() {
+        readFlag = false;
+        readAt = null;
     }
 }

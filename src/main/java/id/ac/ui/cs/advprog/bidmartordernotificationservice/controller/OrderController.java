@@ -2,7 +2,9 @@ package id.ac.ui.cs.advprog.bidmartordernotificationservice.controller;
 
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.AuctionWonEventRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.CreateOrderRequest;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.OpenDisputeRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.OrderResponse;
+import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.ResolveDisputeRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.dto.UpdateOrderStatusRequest;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.exception.ForbiddenOrderActionException;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.BidmartOrder;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -35,11 +38,21 @@ public class OrderController {
     public OrderController(
             OrderService orderService,
             OrderAccessPolicy orderAccessPolicy,
-            @Value("${app.internal-service-token:local-dev-internal-token}") String internalServiceToken
+            @Value("${app.internal-service-token}") String internalServiceToken
     ) {
         this.orderService = orderService;
         this.orderAccessPolicy = orderAccessPolicy;
         this.internalServiceToken = internalServiceToken;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<OrderResponse>> listOrders(
+            @RequestHeader("X-User-Id") String userId
+    ) {
+        List<OrderResponse> orders = orderService.listOrdersForUser(userId).stream()
+                .map(OrderResponse::from)
+                .toList();
+        return ResponseEntity.ok(orders);
     }
 
     @PostMapping
@@ -85,6 +98,28 @@ public class OrderController {
         BidmartOrder order = orderService.getOrder(orderId);
         orderAccessPolicy.requireBuyer(order, userId);
         return ResponseEntity.ok(OrderResponse.from(orderService.confirmReceipt(orderId)));
+    }
+
+    @PostMapping("/{orderId}/dispute")
+    public ResponseEntity<OrderResponse> openDispute(
+            @RequestHeader("X-User-Id") String userId,
+            @PathVariable String orderId,
+            @RequestBody OpenDisputeRequest request
+    ) {
+        BidmartOrder order = orderService.getOrder(orderId);
+        orderAccessPolicy.requireBuyer(order, userId);
+        return ResponseEntity.ok(OrderResponse.from(orderService.openDispute(orderId, request)));
+    }
+
+    @PostMapping("/{orderId}/dispute/resolve")
+    public ResponseEntity<OrderResponse> resolveDispute(
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader(value = "X-User-Roles", required = false) String rolesHeader,
+            @PathVariable String orderId,
+            @RequestBody ResolveDisputeRequest request
+    ) {
+        orderAccessPolicy.requireAdmin(rolesHeader);
+        return ResponseEntity.ok(OrderResponse.from(orderService.resolveDispute(orderId, request, userId)));
     }
 
     @PostMapping("/events/auction-won")

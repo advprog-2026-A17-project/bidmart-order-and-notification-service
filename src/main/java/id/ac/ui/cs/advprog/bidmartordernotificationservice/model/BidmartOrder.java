@@ -47,6 +47,12 @@ public class BidmartOrder {
     @Column
     private String carrier;
 
+    @Column
+    private Instant confirmedAt;
+
+    @Column
+    private Instant payoutReleasedAt;
+
     @Column(unique = true)
     private String sourceEventId;
 
@@ -55,6 +61,28 @@ public class BidmartOrder {
 
     @Column(nullable = false)
     private Instant updatedAt;
+
+    @Column
+    private String disputeReason;
+
+    @Column
+    private String disputeDetails;
+
+    @Column
+    private String sellerDisputeResponse;
+
+    @Enumerated(EnumType.STRING)
+    @Column
+    private DisputeWinner disputeWinner;
+
+    @Column
+    private Instant disputeOpenedAt;
+
+    @Column
+    private Instant disputeResolvedAt;
+
+    @Column
+    private String disputeResolvedBy;
 
     @Version
     private long version;
@@ -85,9 +113,26 @@ public class BidmartOrder {
     }
 
     public void updateShipping(OrderStatus nextStatus, String trackingNumber, String carrier) {
-        if (nextStatus == OrderStatus.CONFIRMED) {
-            throw new IllegalArgumentException("Buyer confirmation is required to confirm an order");
+        if (nextStatus == null) {
+            throw new IllegalArgumentException("Shipping status is required");
         }
+
+        if (nextStatus != OrderStatus.PACKED && nextStatus != OrderStatus.SHIPPED) {
+            throw new IllegalArgumentException("Seller can only set PACKED or SHIPPED status");
+        }
+
+        if (this.status == OrderStatus.CONFIRMED) {
+            throw new IllegalArgumentException("Cannot update shipping after order confirmation");
+        }
+
+        if (nextStatus == OrderStatus.PACKED && this.status != OrderStatus.CREATED) {
+            throw new IllegalArgumentException("Order must be CREATED before it can be PACKED");
+        }
+
+        if (nextStatus == OrderStatus.SHIPPED && this.status != OrderStatus.PACKED) {
+            throw new IllegalArgumentException("Order must be PACKED before it can be SHIPPED");
+        }
+
         this.status = nextStatus;
         this.trackingNumber = trackingNumber;
         this.carrier = carrier;
@@ -95,7 +140,49 @@ public class BidmartOrder {
     }
 
     public void confirmReceipt() {
+        if (this.status != OrderStatus.SHIPPED) {
+            throw new IllegalArgumentException("Order must be shipped before confirmation");
+        }
         this.status = OrderStatus.CONFIRMED;
+        this.confirmedAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
+    public void openDispute(String reason, String details) {
+        if (this.status != OrderStatus.SHIPPED && this.status != OrderStatus.DELIVERED) {
+            throw new IllegalArgumentException("Disputes can only be opened for shipped orders");
+        }
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("Dispute reason is required");
+        }
+        this.status = OrderStatus.DISPUTED;
+        this.disputeReason = reason.trim();
+        this.disputeDetails = details == null ? null : details.trim();
+        this.disputeOpenedAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
+    public void resolveDispute(DisputeWinner winner, String resolvedBy) {
+        if (this.status != OrderStatus.DISPUTED) {
+            throw new IllegalArgumentException("Order is not in dispute");
+        }
+        if (winner == null) {
+            throw new IllegalArgumentException("Dispute winner is required");
+        }
+        this.disputeWinner = winner;
+        this.disputeResolvedAt = Instant.now();
+        this.disputeResolvedBy = resolvedBy;
+        if (winner == DisputeWinner.BUYER) {
+            this.status = OrderStatus.REFUNDED;
+        } else {
+            this.status = OrderStatus.CONFIRMED;
+            this.confirmedAt = Instant.now();
+        }
+        this.updatedAt = Instant.now();
+    }
+
+    public void markPayoutReleased() {
+        this.payoutReleasedAt = Instant.now();
         this.updatedAt = Instant.now();
     }
 
@@ -139,6 +226,14 @@ public class BidmartOrder {
         return carrier;
     }
 
+    public Instant getConfirmedAt() {
+        return confirmedAt;
+    }
+
+    public Instant getPayoutReleasedAt() {
+        return payoutReleasedAt;
+    }
+
     public String getSourceEventId() {
         return sourceEventId;
     }
@@ -149,5 +244,33 @@ public class BidmartOrder {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getDisputeReason() {
+        return disputeReason;
+    }
+
+    public String getDisputeDetails() {
+        return disputeDetails;
+    }
+
+    public String getSellerDisputeResponse() {
+        return sellerDisputeResponse;
+    }
+
+    public DisputeWinner getDisputeWinner() {
+        return disputeWinner;
+    }
+
+    public Instant getDisputeOpenedAt() {
+        return disputeOpenedAt;
+    }
+
+    public Instant getDisputeResolvedAt() {
+        return disputeResolvedAt;
+    }
+
+    public String getDisputeResolvedBy() {
+        return disputeResolvedBy;
     }
 }
