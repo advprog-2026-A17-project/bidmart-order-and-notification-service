@@ -102,8 +102,7 @@ public class AuctionOrderEventConsumer {
         String sellerId = payload.path("sellerId").asText("");
         String status = payload.path("status").asText("");
         String winnerId = payload.path("winnerId").asText("");
-        boolean sold = "WON".equalsIgnoreCase(status)
-                || (status.isBlank() && !winnerId.isBlank());
+        boolean sold = "WON".equalsIgnoreCase(status);
         auctionRealtimeService.publishAuctionEvent(AUCTION_ENDED_V1, payload);
 
         if (sold) {

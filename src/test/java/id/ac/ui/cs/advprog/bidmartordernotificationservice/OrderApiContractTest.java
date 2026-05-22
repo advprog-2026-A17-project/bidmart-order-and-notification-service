@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -312,6 +313,49 @@ class OrderApiContractTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("DISPUTED"))
                 .andExpect(jsonPath("$.disputeReason").value("Never received"));
+    }
+
+    @Test
+    void adminListsAllDisputesAcrossUsers() throws Exception {
+        String disputedLocation = createOrder("auction-admin-dispute-api", "seller-admin-dispute", "buyer-admin-dispute");
+        createOrder("auction-admin-normal-api", "seller-admin-normal", "buyer-admin-normal");
+
+        mockMvc.perform(put(disputedLocation + "/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-User-Id", "seller-admin-dispute")
+                        .content("""
+                                {"status":"PACKED","carrier":"JNE"}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put(disputedLocation + "/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-User-Id", "seller-admin-dispute")
+                        .content("""
+                                {"status":"SHIPPED","trackingNumber":"ADMIN-DISPUTE-TRK","carrier":"JNE"}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post(disputedLocation + "/dispute")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-User-Id", "buyer-admin-dispute")
+                        .content("""
+                                {"reason":"Item mismatch","details":"The received item does not match the listing"}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/orders/admin/disputes")
+                        .header("X-User-Id", "admin-1")
+                        .header("X-User-Roles", "ADMIN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].status").value(hasItem("DISPUTED")))
+                .andExpect(jsonPath("$[*].buyerId").value(hasItem("buyer-admin-dispute")))
+                .andExpect(jsonPath("$[*].sellerId").value(hasItem("seller-admin-dispute")));
+
+        mockMvc.perform(get("/api/v1/orders/admin/disputes")
+                        .header("X-User-Id", "buyer-admin-dispute")
+                        .header("X-User-Roles", "BUYER"))
+                .andExpect(status().isForbidden());
     }
 
     @Test

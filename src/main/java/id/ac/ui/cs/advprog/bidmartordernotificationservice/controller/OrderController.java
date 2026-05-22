@@ -55,6 +55,17 @@ public class OrderController {
         return ResponseEntity.ok(orders);
     }
 
+    @GetMapping("/admin/disputes")
+    public ResponseEntity<List<OrderResponse>> listDisputesForAdmin(
+            @RequestHeader(value = "X-User-Roles", required = false) String rolesHeader
+    ) {
+        orderAccessPolicy.requireAdmin(rolesHeader);
+        List<OrderResponse> orders = orderService.listDisputedOrdersForAdmin().stream()
+                .map(OrderResponse::from)
+                .toList();
+        return ResponseEntity.ok(orders);
+    }
+
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(
             @RequestHeader("X-User-Id") String userId,

@@ -84,6 +84,11 @@ public class OrderService {
         return orderRepository.findByBuyerIdOrSellerIdOrderByCreatedAtDesc(userId, userId);
     }
 
+    @Transactional(readOnly = true)
+    public List<BidmartOrder> listDisputedOrdersForAdmin() {
+        return orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.DISPUTED);
+    }
+
     @Transactional
     public BidmartOrder updateShipping(String orderId, UpdateOrderStatusRequest request) {
         BidmartOrder order = getOrder(orderId);

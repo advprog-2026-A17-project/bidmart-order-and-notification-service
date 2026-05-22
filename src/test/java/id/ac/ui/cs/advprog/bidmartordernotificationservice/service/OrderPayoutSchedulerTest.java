@@ -5,6 +5,7 @@ import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.BidmartOrder;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.model.OrderStatus;
 import id.ac.ui.cs.advprog.bidmartordernotificationservice.repository.OrderRepository;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -110,5 +111,21 @@ class OrderPayoutSchedulerTest {
         org.junit.jupiter.api.Assertions.assertNotNull(order.getPayoutReleasedAt());
         verify(walletClient).payoutSeller(eq("seller-done"), eq(99L), eq(order.getId()));
     }
-}
 
+    @Test
+    void releaseConfirmedOrderPayoutsCapsConfiguredDelayAtFiveMinutes() {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        WalletClient walletClient = mock(WalletClient.class);
+        OrderPayoutScheduler scheduler = new OrderPayoutScheduler(orderRepository, walletClient, 60);
+
+        when(orderRepository.findByStatusAndPayoutReleasedAtIsNullAndConfirmedAtBefore(eq(OrderStatus.CONFIRMED), any(Instant.class)))
+                .thenReturn(List.of());
+
+        scheduler.releaseConfirmedOrderPayouts();
+
+        ArgumentCaptor<Instant> cutoff = ArgumentCaptor.forClass(Instant.class);
+        verify(orderRepository).findByStatusAndPayoutReleasedAtIsNullAndConfirmedAtBefore(eq(OrderStatus.CONFIRMED), cutoff.capture());
+        org.junit.jupiter.api.Assertions.assertTrue(cutoff.getValue().isAfter(Instant.now().minus(6, ChronoUnit.MINUTES)));
+        org.junit.jupiter.api.Assertions.assertTrue(cutoff.getValue().isBefore(Instant.now().minus(4, ChronoUnit.MINUTES)));
+    }
+}

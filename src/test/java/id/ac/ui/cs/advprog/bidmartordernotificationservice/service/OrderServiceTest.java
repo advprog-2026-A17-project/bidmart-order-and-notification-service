@@ -200,6 +200,26 @@ class OrderServiceTest {
     }
 
     @Test
+    void listDisputedOrdersForAdminReturnsAllDisputes() {
+        BidmartOrder disputed = BidmartOrder.create(
+                "auction-admin-dispute",
+                "listing-admin-dispute",
+                "seller-admin-dispute",
+                "buyer-admin-dispute",
+                new BigDecimal("3000"),
+                "Address",
+                null
+        );
+        when(orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.DISPUTED))
+                .thenReturn(List.of(disputed));
+
+        List<BidmartOrder> orders = orderService.listDisputedOrdersForAdmin();
+
+        assertEquals(1, orders.size());
+        verify(orderRepository).findByStatusOrderByCreatedAtDesc(OrderStatus.DISPUTED);
+    }
+
+    @Test
     void openDisputeShouldMarkOrderDisputedAndNotifySeller() {
         BidmartOrder order = BidmartOrder.create(
                 "auction-dispute",

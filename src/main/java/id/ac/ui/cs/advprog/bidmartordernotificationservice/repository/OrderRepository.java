@@ -16,6 +16,8 @@ public interface OrderRepository extends JpaRepository<BidmartOrder, String> {
 
     List<BidmartOrder> findByBuyerIdOrSellerIdOrderByCreatedAtDesc(String buyerId, String sellerId);
 
+    List<BidmartOrder> findByStatusOrderByCreatedAtDesc(OrderStatus status);
+
     List<BidmartOrder> findByStatusAndPayoutReleasedAtIsNullAndConfirmedAtBefore(
             OrderStatus status,
             Instant confirmedBefore

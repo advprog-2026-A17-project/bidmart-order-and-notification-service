@@ -21,6 +21,7 @@ import java.util.List;
 public class OrderPayoutScheduler {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderPayoutScheduler.class);
+    private static final long MAX_PAYOUT_DELAY_MINUTES = 5;
 
     private final OrderRepository orderRepository;
     private final WalletClient walletClient;
@@ -33,7 +34,7 @@ public class OrderPayoutScheduler {
     ) {
         this.orderRepository = orderRepository;
         this.walletClient = walletClient;
-        this.payoutDelay = Duration.ofMinutes(payoutDelayMinutes);
+        this.payoutDelay = Duration.ofMinutes(Math.max(0, Math.min(payoutDelayMinutes, MAX_PAYOUT_DELAY_MINUTES)));
     }
 
     @Scheduled(fixedDelayString = "${bidmart.order.payout-scheduler-interval-ms:60000}")

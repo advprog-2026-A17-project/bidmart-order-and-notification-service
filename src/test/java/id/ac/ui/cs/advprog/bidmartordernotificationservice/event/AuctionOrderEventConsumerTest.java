@@ -210,7 +210,7 @@ class AuctionOrderEventConsumerTest {
     }
 
     @Test
-    void auctionEndedLegacyWinnerWithoutStatusCreatesOrder() throws Exception {
+    void auctionEndedLegacyWinnerWithoutStatusDoesNotCreateOrder() throws Exception {
         consumer.consume("""
                 {
                   "eventId": "evt-legacy-won",
@@ -228,13 +228,9 @@ class AuctionOrderEventConsumerTest {
                 }
                 """);
 
-        verify(orderService).createOrderFromAuctionWon(argThat(request ->
-                request.eventId().equals("evt-legacy-won")
-                        && request.buyerId().equals("buyer-legacy")
-                        && request.finalPrice().compareTo(new java.math.BigDecimal("88")) == 0
-                        && request.shippingAddress().equals("Jl. Legacy 1")
-        ));
-        verify(notificationService).notifyAuctionWon("buyer-legacy", "auction-legacy", "evt-legacy-won");
+        verify(orderService, never()).createOrderFromAuctionWon(org.mockito.ArgumentMatchers.any());
+        verify(notificationService, never()).notifyAuctionWon(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+        verify(notificationService).notifyAuctionEnded("seller-legacy", "auction-legacy", false, "evt-legacy-won");
     }
 
     @Test
